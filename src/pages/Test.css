@@ -1,0 +1,150 @@
+.test-result-stats {
+  margin: 24px 0;
+}
+
+.test-start-card {
+  text-align: center;
+  padding: 52px 28px;
+}
+
+.test-info {
+  margin-bottom: 28px;
+}
+
+.test-info strong {
+  color: var(--accent);
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.5rem;
+}
+
+.test-info-detail {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+.test-mode-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.test-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 20px;
+  height: auto;
+}
+
+.test-mode-label {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.test-mode-desc {
+  font-size: 0.82rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.test-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.test-timer {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.test-progress {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.test-card {
+  text-align: center;
+  padding: 48px 28px;
+  background:
+    linear-gradient(180deg, rgba(15, 118, 110, 0.04), transparent),
+    var(--bg-card);
+}
+
+.test-prompt {
+  margin-bottom: 10px;
+}
+
+.prompt-en {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(2rem, 6vw, 2.6rem);
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.prompt-cn {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(1.6rem, 5vw, 2.1rem);
+  font-weight: 700;
+}
+
+.test-hint {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-bottom: 24px;
+}
+
+.test-input {
+  text-align: center;
+  font-size: 1.125rem;
+  margin-bottom: 22px;
+}
+
+.test-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.feedback {
+  padding: 18px 0;
+}
+
+.feedback-result {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.feedback-result.correct { color: var(--success); }
+.feedback-result.wrong { color: var(--error); }
+
+.feedback-answer {
+  color: var(--text-muted);
+  margin-bottom: 22px;
+}
+
+.feedback-answer strong {
+  color: var(--text);
+}
+
+.test-result-card {
+  text-align: center;
+  padding: 48px 28px;
+}
+
+.test-result-card h2 {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.75rem;
+}

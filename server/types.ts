@@ -1,0 +1,76 @@
+export type TestMode = 'en_to_cn' | 'cn_to_en';
+export type ResultType = 'correct' | 'spelling_error' | 'meaning_wrong' | 'unknown';
+
+export interface Word {
+  id: number;
+  english: string;
+  chinese: string;
+  created_at: string;
+}
+
+export interface ParsedWord {
+  english: string;
+  chinese: string;
+}
+
+export interface TestQuestion {
+  wordId: number;
+  mode: TestMode;
+  prompt: string;
+  answer: string;
+}
+
+export interface TestResultInput {
+  wordId: number;
+  mode: TestMode;
+  resultType: ResultType;
+  userAnswer?: string;
+}
+
+export interface DailyReport {
+  date: string;
+  totalTests: number;
+  correct: number;
+  spellingError: number;
+  meaningWrong: number;
+  unknown: number;
+  accuracy: number;
+  enToCnTests: number;
+  cnToEnTests: number;
+  newWordsAdded: number;
+}
+
+export interface ErrorWordEntry {
+  word: Word;
+  errorCount: number;
+  lastError: ResultType;
+  lastErrorDate: string;
+  errorTypes: Record<ResultType, number>;
+}
+
+export interface WeeklyReviewWord {
+  word: Word;
+  priority: number;
+  errorCount7d: number;
+  unknownCount7d: number;
+  daysSinceLastCorrect: number | null;
+  recentErrors: ResultType[];
+}
+
+export interface ImportResult {
+  imported: number;
+  duplicates: number;
+  parsed: ParsedWord[];
+  rawText?: string;
+  previewDataUrl?: string;
+}
+
+export interface StatsOverview {
+  totalWords: number;
+  todayNewWords: number;
+  todayTests: number;
+  todayAccuracy: number;
+  errorBookCount: number;
+  weeklyReviewCount: number;
+  streakDays: number;
+}

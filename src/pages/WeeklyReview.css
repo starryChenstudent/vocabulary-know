@@ -1,0 +1,55 @@
+.review-action {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.review-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.review-en {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent);
+  display: block;
+}
+
+.review-cn {
+  color: var(--text-muted);
+}
+
+.priority-badge {
+  font-size: 0.72rem;
+  padding: 5px 10px;
+  background: var(--purple-soft);
+  color: var(--purple);
+  border-radius: 999px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.review-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.recent-errors {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}

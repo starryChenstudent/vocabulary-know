@@ -1,0 +1,102 @@
+.report-section {
+  margin-bottom: 24px;
+}
+
+.report-section .stat-grid {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.result-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.mode-split {
+  display: flex;
+  gap: 24px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 170px;
+  padding: 16px 0;
+  margin-bottom: 24px;
+}
+
+.chart-bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-bar-wrapper {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.chart-bar {
+  width: 100%;
+  background: linear-gradient(to top, var(--accent), #14b8a6);
+  border-radius: 8px 8px 4px 4px;
+  min-height: 6px;
+  transition: height 0.3s ease;
+}
+
+.chart-label {
+  font-size: 0.68rem;
+  color: var(--text-faint);
+  font-weight: 600;
+}
+
+.chart-accuracy {
+  font-size: 0.68rem;
+  color: var(--success);
+  font-weight: 700;
+}
+
+.history-table {
+  border-top: 1px solid var(--border);
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: 1fr 80px 80px 60px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.history-row:last-child {
+  border-bottom: none;
+}
+
+.history-date {
+  color: var(--text-muted);
+}
+
+@media (max-width: 480px) {
+  .history-row {
+    grid-template-columns: 1fr 60px 60px;
+  }
+
+  .history-row span:nth-child(3) {
+    display: none;
+  }
+}
