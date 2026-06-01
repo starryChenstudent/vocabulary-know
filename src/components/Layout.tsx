@@ -31,16 +31,18 @@ function LogoMark() {
 }
 
 const NAV_ITEMS = [
-  { to: '/', label: '首页', icon: 'home' },
-  { to: '/import', label: '导入', icon: 'import' },
-  { to: '/test', label: '测试', icon: 'test' },
-  { to: '/report', label: '报告', icon: 'report' },
-  { to: '/error-book', label: '错词本', icon: 'error' },
-  { to: '/review', label: '复习', icon: 'review' },
-  { to: '/words', label: '词库', icon: 'words' },
-] as const;
+  { to: '/', label: '首页', icon: 'home' as const },
+  { to: '/import', label: '导入', icon: 'import' as const },
+  { to: '/test', label: '测试', icon: 'test' as const },
+  { to: '/report', label: '报告', icon: 'report' as const },
+  { to: '/error-book', label: '错词本', icon: 'error' as const },
+  { to: '/review', label: '复习', icon: 'review' as const },
+  { to: '/words', label: '词库', icon: 'words' as const },
+];
 
-function NavIcon({ name }: { name: (typeof NAV_ITEMS)[number]['icon'] }) {
+type NavIconName = (typeof NAV_ITEMS)[number]['icon'] | 'admin';
+
+function NavIcon({ name }: { name: NavIconName }) {
   switch (name) {
     case 'home':
       return (
@@ -87,6 +89,13 @@ function NavIcon({ name }: { name: (typeof NAV_ITEMS)[number]['icon'] }) {
           <path d="M7 6h11M7 12h11M7 18h11M4 6h.01M4 12h.01M4 18h.01" />
         </svg>
       );
+    case 'admin':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M12 3 4 7v6c0 5 3.4 9.3 8 10 4.6-.7 8-5 8-10V7l-8-4Z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      );
   }
 }
 
@@ -110,6 +119,10 @@ export default function Layout({ children }: { children: ReactNode }) {
     }
   }, [collapsed]);
 
+  const navItems = user?.is_admin
+    ? [...NAV_ITEMS, { to: '/admin', label: '管理', icon: 'admin' as const }]
+    : NAV_ITEMS;
+
   return (
     <div className={`layout ${collapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
@@ -124,7 +137,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <ClockDisplay collapsed={collapsed} />
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -194,7 +207,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="nav-mobile">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

@@ -37,6 +37,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [registrationAllowed, setRegistrationAllowed] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     api.getRegistrationStatus().then((res) => setRegistrationAllowed(res.allowed)).catch(() => {});
@@ -100,15 +101,37 @@ export default function Login() {
 
           <label className="login-label">
             密码
-            <input
-              className="input"
-              type="password"
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="至少 6 位"
-              required
-            />
+            <div className="login-password-wrap">
+              <input
+                className="input login-password-input"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="至少 6 位"
+                required
+              />
+              <button
+                type="button"
+                className="login-password-toggle"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? '隐藏密码' : '显示密码'}
+                title={showPassword ? '隐藏密码' : '显示密码'}
+              >
+                {showPassword ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M3 3l18 18" />
+                    <path d="M10.58 10.58A2 2 0 0 0 12 15a2 2 0 0 0 1.42-3.42" />
+                    <path d="M9.88 5.09A10.94 10.94 0 0 1 12 5c5 0 9.27 3.11 11 8-1.02 2.94-3.07 5.26-5.62 6.62M6.61 6.61A10.8 10.8 0 0 0 3 13c1.73 4.89 6 8 9 8 1.05 0 2.07-.22 3.03-.62" />
+                  </svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </label>
 
           {error && <p className="error-msg">{error}</p>}
@@ -126,6 +149,7 @@ export default function Login() {
               className="login-switch-btn"
               onClick={() => {
                 setMode(mode === 'login' ? 'register' : 'login');
+                setShowPassword(false);
                 setError('');
               }}
             >

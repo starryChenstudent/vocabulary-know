@@ -6,8 +6,10 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import apiRouter from './routes/api.js';
 import authRouter from './routes/auth.js';
+import adminRouter from './routes/admin.js';
 
 import { closeDb } from './db.js';
+import { bootstrapAdmin } from './services/adminService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -16,7 +18,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
 app.use('/api', apiRouter);
+
+bootstrapAdmin();
 
 const clientDist = path.join(__dirname, '../client');
 if (fs.existsSync(clientDist)) {

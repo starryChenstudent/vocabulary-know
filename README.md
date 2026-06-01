@@ -62,9 +62,25 @@ npm start
 | `PORT` | 服务端口 | `3000` |
 | `DB_PATH` | SQLite 文件路径 | `data/vocabulary.db` |
 | `ALLOW_REGISTRATION` | 设为 `false` 关闭公开注册 | 允许注册 |
+| `ADMIN_USERNAME` | 管理员用户名（启动时自动创建或提升） | — |
+| `ADMIN_PASSWORD` | 管理员密码（至少 6 位） | — |
 | `OPENAI_API_KEY` | OpenAI 兼容接口（可选） | — |
 
 不配置视觉 API Key 时，`OCR_ENGINE=auto` 会回退到本地 Tesseract OCR。
+
+## 管理后台
+
+在 `.env` 中配置管理员账号后重启服务：
+
+```env
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=your-secure-password
+```
+
+- 若该用户名已存在，会被提升为管理员并重置密码
+- 若不存在，会自动创建管理员账号
+
+管理员登录后，侧边栏会出现 **「管理」** 入口（`/admin`），可查看用户数量、各用户单词数，并重置密码或删除用户。删除用户会同时删除其全部单词和测试记录。
 
 ## Docker 部署
 

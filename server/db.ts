@@ -77,6 +77,11 @@ function ensureWordsCreatedAtDefault(db: Database.Database): void {
   })();
 }
 
+function migrateUsersAdmin(db: Database.Database): void {
+  if (columnExists(db, 'users', 'is_admin')) return;
+  db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0');
+}
+
 const dbPath = resolveDbPath();
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
@@ -132,6 +137,7 @@ db.exec(`
 
   migrateWordsForMultiUser(db);
   ensureWordsCreatedAtDefault(db);
+  migrateUsersAdmin(db);
 
 export default db;
 

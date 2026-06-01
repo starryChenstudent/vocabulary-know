@@ -9,6 +9,7 @@ import ErrorBook from './pages/ErrorBook';
 import WeeklyReview from './pages/WeeklyReview';
 import WordList from './pages/WordList';
 import Login from './pages/Login';
+import Admin from './pages/Admin';
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
@@ -37,6 +38,7 @@ function ProtectedApp() {
         <Route path="/error-book" element={<ErrorBook />} />
         <Route path="/review" element={<WeeklyReview />} />
         <Route path="/words" element={<WordList />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

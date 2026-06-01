@@ -10,6 +10,7 @@ export interface UserPublic {
   id: number;
   username: string;
   created_at: string;
+  is_admin: boolean;
 }
 
 export class AuthError extends Error {
@@ -65,6 +66,41 @@ function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, SCRYPT_KEYLEN).toString('hex');
   return `${salt}:${hash}`;
+}
+
+export function hashPasswordForStorage(password: string): string {
+  return hashPassword(password);
+}
+
+export function updateUserPassword(userId: number, password: string): void {
+  if (password.length < 6) {
+    throw new AuthError('密码至少 6 位', 400);
+  }
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(
+    hashPassword(password),
+    userId
+  );
+}
+
+export function isUserAdmin(userId: number): boolean {
+  const row = db
+    .prepare('SELECT is_admin FROM users WHERE id = ?')
+    .get(userId) as { is_admin: number } | undefined;
+  return row?.is_admin === 1;
+}
+
+function toUserPublic(row: {
+  id: number;
+  username: string;
+  created_at: string;
+  is_admin: number;
+}): UserPublic {
+  return {
+    id: row.id,
+    username: row.username,
+    created_at: row.created_at,
+    is_admin: row.is_admin === 1,
+  };
 }
 
 function verifyPassword(password: string, stored: string): boolean {
@@ -127,9 +163,17 @@ export function register(username: string, password: string): { user: UserPublic
 export function login(username: string, password: string): { user: UserPublic; token: string } {
   const trimmed = username.trim();
   const row = db
-    .prepare('SELECT id, username, password_hash, created_at FROM users WHERE username = ? COLLATE NOCASE')
+    .prepare(
+      'SELECT id, username, password_hash, created_at, is_admin FROM users WHERE username = ? COLLATE NOCASE'
+    )
     .get(trimmed) as
-    | { id: number; username: string; password_hash: string; created_at: string }
+    | {
+        id: number;
+        username: string;
+        password_hash: string;
+        created_at: string;
+        is_admin: number;
+      }
     | undefined;
 
   if (!row || !verifyPassword(password, row.password_hash)) {
@@ -137,10 +181,7 @@ export function login(username: string, password: string): { user: UserPublic; t
   }
 
   const token = createSession(row.id);
-  return {
-    user: { id: row.id, username: row.username, created_at: row.created_at },
-    token,
-  };
+  return { user: toUserPublic(row), token };
 }
 
 export function logout(token: string): void {
@@ -164,7 +205,9 @@ export function validateSession(token: string): number | null {
 
 export function getUserById(id: number): UserPublic | null {
   const row = db
-    .prepare('SELECT id, username, created_at FROM users WHERE id = ?')
-    .get(id) as UserPublic | undefined;
-  return row ?? null;
+    .prepare('SELECT id, username, created_at, is_admin FROM users WHERE id = ?')
+    .get(id) as
+    | { id: number; username: string; created_at: string; is_admin: number }
+    | undefined;
+  return row ? toUserPublic(row) : null;
 }

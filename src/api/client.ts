@@ -2,6 +2,21 @@ export interface User {
   id: number;
   username: string;
   created_at: string;
+  is_admin: boolean;
+}
+
+export interface AdminStats {
+  userCount: number;
+  totalWords: number;
+  adminCount: number;
+}
+
+export interface AdminUserRow {
+  id: number;
+  username: string;
+  created_at: string;
+  is_admin: boolean;
+  word_count: number;
 }
 
 export type TestMode = 'en_to_cn' | 'cn_to_en';
@@ -199,6 +214,16 @@ export const api = {
   getWeeklyReview: () => request<WeeklyReviewWord[]>('/review/weekly'),
 
   getWeeklyReviewTest: () => request<TestQuestion[]>('/review/weekly/test'),
+
+  getAdminStats: () => request<AdminStats>('/admin/stats'),
+  getAdminUsers: () => request<AdminUserRow[]>('/admin/users'),
+  resetUserPassword: (userId: number, password: string) =>
+    request<{ success: boolean }>(`/admin/users/${userId}/password`, {
+      method: 'PUT',
+      body: JSON.stringify({ password }),
+    }),
+  deleteUser: (userId: number) =>
+    request<{ success: boolean }>(`/admin/users/${userId}`, { method: 'DELETE' }),
 };
 
 export const RESULT_LABELS: Record<ResultType, string> = {
