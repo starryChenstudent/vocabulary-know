@@ -1,13 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  api,
-  type TestQuestion,
-  type TestMode,
-  type ResultType,
-  MODE_LABELS,
-  RESULT_LABELS,
-} from '../api/client';
+import { api, type TestQuestion, type TestMode, type ResultType } from '../api/client';
+import { useLocale } from '../components/LocaleProvider';
 import { useElapsedTimer } from '../hooks/useTime';
 import { formatDuration } from '../utils/time';
 import './Test.css';
@@ -22,6 +16,7 @@ interface AnswerRecord {
 }
 
 export default function Test() {
+  const { t, locale } = useLocale();
   const [searchParams] = useSearchParams();
   const initialType = searchParams.get('type') === 'review' ? 'review' : 'daily';
   const [testType, setTestType] = useState<TestType>(initialType);
@@ -41,6 +36,9 @@ export default function Test() {
   const [records, setRecords] = useState<AnswerRecord[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const elapsedSeconds = useElapsedTimer(started && !finished && questions.length > 0);
+
+  const modeLabel = (mode: TestMode) => (mode === 'en_to_cn' ? t('test.enToCn') : t('test.cnToEn'));
+  const resultLabel = (type: ResultType) => t(`result.${type}`);
 
   const loadReviewTest = useCallback(async () => {
     setLoading(true);
@@ -182,22 +180,22 @@ export default function Test() {
   };
 
   if (loading && testType === 'daily' && !started) {
-    return <div className="empty-state">加载中...</div>;
+    return <div className="empty-state">{t('common.loading')}</div>;
   }
 
   if (loading && testType === 'review' && questions.length === 0) {
-    return <div className="empty-state">加载测试题...</div>;
+    return <div className="empty-state">{t('test.loadingQuestions')}</div>;
   }
 
   if (testType === 'daily' && todayWordCount === 0) {
     return (
       <div className="test-page fade-in">
         <div className="page-header">
-          <h1 className="page-title">每日测试</h1>
+          <h1 className="page-title">{t('test.title')}</h1>
         </div>
         <div className="empty-state card">
-          <p>今日还没有新词</p>
-          <p>请先导入今日单词，再进行每日测试</p>
+          <p>{t('test.noNewWords')}</p>
+          <p>{t('test.noNewWordsHint')}</p>
         </div>
       </div>
     );
@@ -207,11 +205,11 @@ export default function Test() {
     return (
       <div className="test-page fade-in">
         <div className="page-header">
-          <h1 className="page-title">每日测试</h1>
+          <h1 className="page-title">{t('test.title')}</h1>
         </div>
         <div className="empty-state card">
-          <p>暂无待复习单词</p>
-          <p>完成测试后，错误单词会自动进入复习列表</p>
+          <p>{t('test.noReviewWords')}</p>
+          <p>{t('test.noReviewWordsHint')}</p>
         </div>
       </div>
     );
@@ -223,23 +221,23 @@ export default function Test() {
     return (
       <div className="test-page fade-in">
         <div className="card test-result-card">
-          <h2>测试完成</h2>
+          <h2>{t('test.finished')}</h2>
           <div className="stat-grid test-result-stats">
             <div className="stat-item stat-item--success">
               <div className="stat-value">{stats.correct}</div>
-              <div className="stat-label">正确</div>
+              <div className="stat-label">{t('common.correct')}</div>
             </div>
             <div className="stat-item">
               <div className="stat-value">{stats.total}</div>
-              <div className="stat-label">总题数</div>
+              <div className="stat-label">{t('test.totalQuestions')}</div>
             </div>
             <div className="stat-item stat-item--accent">
               <div className="stat-value">{accuracy}%</div>
-              <div className="stat-label">正确率</div>
+              <div className="stat-label">{t('test.accuracy')}</div>
             </div>
             <div className="stat-item stat-item--purple">
-              <div className="stat-value">{formatDuration(elapsedSeconds)}</div>
-              <div className="stat-label">用时</div>
+              <div className="stat-value">{formatDuration(elapsedSeconds, locale)}</div>
+              <div className="stat-label">{t('test.duration')}</div>
             </div>
           </div>
           <button
@@ -252,7 +250,7 @@ export default function Test() {
               }
             }}
           >
-            {testType === 'daily' ? '返回选择模式' : '再来一轮'}
+            {testType === 'daily' ? t('test.backToMode') : t('test.anotherRound')}
           </button>
         </div>
       </div>
@@ -263,11 +261,9 @@ export default function Test() {
     return (
       <div className="test-page fade-in">
         <div className="page-header">
-          <h1 className="page-title">每日测试</h1>
+          <h1 className="page-title">{t('test.title')}</h1>
           <p className="page-desc">
-            {testType === 'daily'
-              ? '仅测试今日导入的单词，英→中与中→英分开进行'
-              : '针对近 7 天错误单词的强化复习'}
+            {testType === 'daily' ? t('test.dailyDesc') : t('test.reviewDesc')}
           </p>
         </div>
 
@@ -276,23 +272,21 @@ export default function Test() {
             className={`tab ${testType === 'daily' ? 'active' : ''}`}
             onClick={() => setTestType('daily')}
           >
-            每日测试
+            {t('test.title')}
           </button>
           <button
             className={`tab ${testType === 'review' ? 'active' : ''}`}
             onClick={() => setTestType('review')}
           >
-            强化复习
+            {t('test.reviewTitle')}
           </button>
         </div>
 
         {testType === 'daily' ? (
           <div className="card test-start-card">
             <div className="test-info">
-              <p>
-                今日新词 <strong>{todayWordCount ?? 0}</strong> 个
-              </p>
-              <p className="test-info-detail">每日测试只覆盖今天导入的单词，请选择一种模式开始</p>
+              <p>{t('test.todayNewWords', { count: todayWordCount ?? 0 })}</p>
+              <p className="test-info-detail">{t('test.dailyHint')}</p>
             </div>
             <div className="test-mode-actions">
               <button
@@ -300,29 +294,27 @@ export default function Test() {
                 onClick={() => loadDailyTest('en_to_cn')}
                 disabled={loading}
               >
-                <span className="test-mode-label">{MODE_LABELS.en_to_cn}</span>
-                <span className="test-mode-desc">看英文，输入中文释义</span>
+                <span className="test-mode-label">{modeLabel('en_to_cn')}</span>
+                <span className="test-mode-desc">{t('test.enToCnDesc')}</span>
               </button>
               <button
                 className="btn btn-primary btn-lg test-mode-btn"
                 onClick={() => loadDailyTest('cn_to_en')}
                 disabled={loading}
               >
-                <span className="test-mode-label">{MODE_LABELS.cn_to_en}</span>
-                <span className="test-mode-desc">看中文，拼写英文单词</span>
+                <span className="test-mode-label">{modeLabel('cn_to_en')}</span>
+                <span className="test-mode-desc">{t('test.cnToEnDesc')}</span>
               </button>
             </div>
           </div>
         ) : (
           <div className="card test-start-card">
             <div className="test-info">
-              <p>
-                共 <strong>{questions.length}</strong> 道题
-              </p>
-              <p className="test-info-detail">根据近期错误类型自动匹配复习模式</p>
+              <p>{t('test.reviewCount', { count: questions.length })}</p>
+              <p className="test-info-detail">{t('test.reviewHint')}</p>
             </div>
             <button className="btn btn-primary btn-lg" onClick={handleStart}>
-              开始复习
+              {t('test.startReview')}
             </button>
           </div>
         )}
@@ -334,14 +326,12 @@ export default function Test() {
     <div className="test-page fade-in">
       <div className="test-header">
         <span className="badge badge-purple">
-          {testType === 'daily' && testMode
-            ? MODE_LABELS[testMode]
-            : MODE_LABELS[current.mode]}
+          {testType === 'daily' && testMode ? modeLabel(testMode) : modeLabel(current.mode)}
         </span>
         <span className="test-progress">
           {currentIndex + 1} / {questions.length}
         </span>
-        <span className="test-timer">{formatDuration(elapsedSeconds)}</span>
+        <span className="test-timer">{formatDuration(elapsedSeconds, locale)}</span>
       </div>
 
       <div className="progress-bar" style={{ marginBottom: 24 }}>
@@ -360,7 +350,7 @@ export default function Test() {
           )}
         </div>
         <p className="test-hint">
-          {current.mode === 'en_to_cn' ? '请输入中文释义' : '请拼写英文单词'}
+          {current.mode === 'en_to_cn' ? t('test.hintEnToCn') : t('test.hintCnToEn')}
         </p>
 
         {!showFeedback ? (
@@ -372,18 +362,22 @@ export default function Test() {
               onChange={(e) => setUserAnswer(e.target.value)}
               onKeyDown={handleKeyDown}
               autoFocus
-              placeholder={current.mode === 'en_to_cn' ? '中文释义...' : 'English...'}
+              placeholder={
+                current.mode === 'en_to_cn'
+                  ? t('test.placeholderEnToCn')
+                  : t('test.placeholderCnToEn')
+              }
             />
             <div className="test-actions">
               <button className="btn btn-secondary" onClick={handleSkip}>
-                不会
+                {t('test.dontKnow')}
               </button>
               <button
                 className="btn btn-primary"
                 onClick={handleSubmit}
                 disabled={!userAnswer.trim()}
               >
-                确认
+                {t('common.confirm')}
               </button>
             </div>
           </>
@@ -394,15 +388,16 @@ export default function Test() {
                 lastResult?.resultType === 'correct' ? 'correct' : 'wrong'
               }`}
             >
-              {lastResult && RESULT_LABELS[lastResult.resultType]}
+              {lastResult && resultLabel(lastResult.resultType)}
             </div>
             {lastResult?.resultType !== 'correct' && (
               <p className="feedback-answer">
-                正确答案：<strong>{lastResult?.expected}</strong>
+                {t('test.correctAnswer')}
+                <strong>{lastResult?.expected}</strong>
               </p>
             )}
             <button className="btn btn-primary btn-lg" onClick={handleNext}>
-              {currentIndex + 1 >= questions.length ? '查看结果' : '下一题'}
+              {currentIndex + 1 >= questions.length ? t('test.viewResult') : t('test.nextQuestion')}
             </button>
           </div>
         )}

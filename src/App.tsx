@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
+import { useLocale } from './components/LocaleProvider';
 import { useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import Import from './pages/Import';
@@ -13,12 +14,13 @@ import Admin from './pages/Admin';
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
+  const { t } = useLocale();
 
   if (loading) {
     return (
       <div className="login-page">
         <div className="login-card card">
-          <p className="login-muted">加载中…</p>
+          <p className="login-muted">{t('common.loading')}</p>
         </div>
       </div>
     );

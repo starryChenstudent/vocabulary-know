@@ -1,76 +1,86 @@
 import { useEffect, useState } from 'react';
 import { api, type DailyReport } from '../api/client';
+import { useLocale } from '../components/LocaleProvider';
 import './Report.css';
 
 export default function Report() {
+  const { t } = useLocale();
   const [today, setToday] = useState<DailyReport | null>(null);
   const [history, setHistory] = useState<DailyReport[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([api.getDailyReport(), api.getReportHistory(7)])
-      .then(([t, h]) => {
-        setToday(t);
-        setHistory(h.reverse());
+      .then(([todayReport, historyReport]) => {
+        setToday(todayReport);
+        setHistory(historyReport.reverse());
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="empty-state">加载中...</div>;
+  if (loading) return <div className="empty-state">{t('common.loading')}</div>;
 
   const maxTests = Math.max(...history.map((h) => h.totalTests), 1);
 
   return (
     <div className="report-page fade-in">
       <div className="page-header">
-        <h1 className="page-title">学习报告</h1>
-        <p className="page-desc">每日测试数据汇总与 7 日趋势</p>
+        <h1 className="page-title">{t('report.title')}</h1>
+        <p className="page-desc">{t('report.desc')}</p>
       </div>
 
       {today && (
         <section className="card report-section">
-          <h2 className="section-title">今日报告 · {today.date}</h2>
+          <h2 className="section-title">{t('report.todayReport', { date: today.date })}</h2>
 
           <div className="stat-grid">
             <div className="stat-item">
               <div className="stat-value">{today.totalTests}</div>
-              <div className="stat-label">测试次数</div>
+              <div className="stat-label">{t('report.testCount')}</div>
             </div>
             <div className="stat-item stat-item--success">
               <div className="stat-value">{today.accuracy}%</div>
-              <div className="stat-label">正确率</div>
+              <div className="stat-label">{t('report.accuracy')}</div>
             </div>
             <div className="stat-item stat-item--accent">
               <div className="stat-value">{today.newWordsAdded}</div>
-              <div className="stat-label">新增单词</div>
+              <div className="stat-label">{t('report.newWords')}</div>
             </div>
           </div>
 
           <div className="result-breakdown">
             <div className="breakdown-item">
-              <span className="badge badge-success">正确 {today.correct}</span>
+              <span className="badge badge-success">
+                {t('common.correct')} {today.correct}
+              </span>
             </div>
             <div className="breakdown-item">
-              <span className="badge badge-error">拼写错误 {today.spellingError}</span>
+              <span className="badge badge-error">
+                {t('report.spellingError')} {today.spellingError}
+              </span>
             </div>
             <div className="breakdown-item">
-              <span className="badge badge-warning">释义错误 {today.meaningWrong}</span>
+              <span className="badge badge-warning">
+                {t('report.meaningWrong')} {today.meaningWrong}
+              </span>
             </div>
             <div className="breakdown-item">
-              <span className="badge badge-muted">完全不会 {today.unknown}</span>
+              <span className="badge badge-muted">
+                {t('report.unknown')} {today.unknown}
+              </span>
             </div>
           </div>
 
           <div className="mode-split">
-            <span>英→中：{today.enToCnTests} 次</span>
-            <span>中→英：{today.cnToEnTests} 次</span>
+            <span>{t('report.enToCn', { count: today.enToCnTests })}</span>
+            <span>{t('report.cnToEn', { count: today.cnToEnTests })}</span>
           </div>
         </section>
       )}
 
       <section className="card">
-        <h2 className="section-title">7 日趋势</h2>
+        <h2 className="section-title">{t('report.trend7d')}</h2>
         <div className="chart">
           {history.map((day) => (
             <div key={day.date} className="chart-bar-group">
@@ -78,7 +88,11 @@ export default function Report() {
                 <div
                   className="chart-bar"
                   style={{ height: `${(day.totalTests / maxTests) * 100}%` }}
-                  title={`${day.date}: ${day.totalTests} 次, ${day.accuracy}%`}
+                  title={t('report.chartTitle', {
+                    date: day.date,
+                    tests: day.totalTests,
+                    accuracy: day.accuracy,
+                  })}
                 />
               </div>
               <span className="chart-label">{day.date.slice(5)}</span>
@@ -94,8 +108,12 @@ export default function Report() {
             .map((day) => (
               <div key={day.date} className="history-row">
                 <span className="history-date">{day.date}</span>
-                <span>{day.totalTests} 次</span>
-                <span style={{ color: 'var(--success)' }}>{day.correct} 正确</span>
+                <span>
+                  {day.totalTests} {t('common.times')}
+                </span>
+                <span style={{ color: 'var(--success)' }}>
+                  {day.correct} {t('common.correct')}
+                </span>
                 <span>{day.accuracy}%</span>
               </div>
             ))}

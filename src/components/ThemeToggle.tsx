@@ -1,13 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTheme } from './ThemeProvider';
+import { useLocale } from './LocaleProvider';
 import type { ThemePreference } from '../theme';
 import './ThemeToggle.css';
-
-const OPTIONS: Array<{ value: ThemePreference; label: string }> = [
-  { value: 'light', label: '浅色' },
-  { value: 'dark', label: '深色' },
-  { value: 'system', label: '跟随系统' },
-];
 
 function SunIcon() {
   return (
@@ -46,8 +41,11 @@ interface ThemeToggleProps {
   variant?: 'sidebar' | 'mobile';
 }
 
+const THEME_OPTIONS: ThemePreference[] = ['light', 'dark', 'system'];
+
 export default function ThemeToggle({ collapsed = false, variant = 'sidebar' }: ThemeToggleProps) {
   const { preference, setPreference } = useTheme();
+  const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -84,20 +82,20 @@ export default function ThemeToggle({ collapsed = false, variant = 'sidebar' }: 
         .join(' ')}
     >
       {open && (
-        <div className="theme-menu" role="menu" aria-label="外观模式">
-          {OPTIONS.map((option) => (
+        <div className="theme-menu" role="menu" aria-label={t('theme.menu')}>
+          {THEME_OPTIONS.map((option) => (
             <button
-              key={option.value}
+              key={option}
               type="button"
               role="menuitemradio"
-              aria-checked={preference === option.value}
-              className={`theme-menu-item ${preference === option.value ? 'active' : ''}`}
+              aria-checked={preference === option}
+              className={`theme-menu-item ${preference === option ? 'active' : ''}`}
               onClick={() => {
-                setPreference(option.value);
+                setPreference(option);
                 setOpen(false);
               }}
             >
-              {option.label}
+              {t(`theme.${option}`)}
             </button>
           ))}
         </div>
@@ -106,15 +104,15 @@ export default function ThemeToggle({ collapsed = false, variant = 'sidebar' }: 
       <button
         type="button"
         className="theme-trigger"
-        aria-label="切换外观"
+        aria-label={t('theme.toggle')}
         aria-expanded={open}
         aria-haspopup="menu"
-        title="切换外观"
+        title={t('theme.toggle')}
         onClick={() => setOpen((value) => !value)}
       >
         <TriggerIcon preference={preference} />
         {!collapsed && variant === 'sidebar' && (
-          <span className="theme-trigger-text">外观</span>
+          <span className="theme-trigger-text">{t('theme.label')}</span>
         )}
       </button>
     </div>

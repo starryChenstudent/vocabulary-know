@@ -1,5 +1,7 @@
-export function formatClockTime(date: Date, withSeconds = true): string {
-  return date.toLocaleTimeString('zh-CN', {
+import type { Locale } from '../i18n';
+
+export function formatClockTime(date: Date, withSeconds = true, locale: Locale = 'zh'): string {
+  return date.toLocaleTimeString(locale === 'zh' ? 'zh-CN' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
     second: withSeconds ? '2-digit' : undefined,
@@ -7,8 +9,8 @@ export function formatClockTime(date: Date, withSeconds = true): string {
   });
 }
 
-export function formatFullDate(date: Date): string {
-  return date.toLocaleDateString('zh-CN', {
+export function formatFullDate(date: Date, locale: Locale = 'zh'): string {
+  return date.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -16,27 +18,31 @@ export function formatFullDate(date: Date): string {
   });
 }
 
-export function formatShortDate(date: Date): string {
-  return date.toLocaleDateString('zh-CN', {
+export function formatShortDate(date: Date, locale: Locale = 'zh'): string {
+  return date.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
     month: 'numeric',
     day: 'numeric',
     weekday: 'short',
   });
 }
 
-export function formatDuration(totalSeconds: number): string {
+export function formatDuration(totalSeconds: number, locale: Locale = 'zh'): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
 
-  if (minutes === 0) return `${seconds} 秒`;
-  return `${minutes} 分 ${String(seconds).padStart(2, '0')} 秒`;
+  if (minutes === 0) {
+    return locale === 'zh' ? `${seconds} 秒` : `${seconds}s`;
+  }
+  return locale === 'zh'
+    ? `${minutes} 分 ${String(seconds).padStart(2, '0')} 秒`
+    : `${minutes}m ${String(seconds).padStart(2, '0')}s`;
 }
 
-export function getGreeting(date: Date): string {
+export function getGreeting(date: Date, t: (key: string) => string): string {
   const hour = date.getHours();
-  if (hour < 6) return '夜深了';
-  if (hour < 11) return '早上好';
-  if (hour < 13) return '中午好';
-  if (hour < 18) return '下午好';
-  return '晚上好';
+  if (hour < 6) return t('greeting.lateNight');
+  if (hour < 11) return t('greeting.morning');
+  if (hour < 13) return t('greeting.noon');
+  if (hour < 18) return t('greeting.afternoon');
+  return t('greeting.evening');
 }

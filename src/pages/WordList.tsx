@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Word } from '../api/client';
+import { useLocale } from '../components/LocaleProvider';
 import './WordList.css';
 
 export default function WordList() {
+  const { t } = useLocale();
   const [words, setWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -11,6 +13,7 @@ export default function WordList() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editEn, setEditEn] = useState('');
   const [editCn, setEditCn] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const loadWords = () => {
     api
@@ -64,7 +67,7 @@ export default function WordList() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('确定删除这个单词？')) return;
+    if (!confirm(t('words.confirmDeleteOne'))) return;
     await api.deleteWord(id);
     setWords((prev) => prev.filter((w) => w.id !== id));
     setSelectedIds((prev) => {
@@ -77,7 +80,7 @@ export default function WordList() {
   const handleDeleteSelected = async () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
-    if (!confirm(`确定删除选中的 ${ids.length} 个单词？`)) return;
+    if (!confirm(t('words.confirmDeleteSelected', { count: ids.length }))) return;
 
     setDeleting(true);
     try {
@@ -85,7 +88,7 @@ export default function WordList() {
       setWords((prev) => prev.filter((w) => !selectedIds.has(w.id)));
       setSelectedIds(new Set());
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败');
+      alert(err instanceof Error ? err.message : t('words.deleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -93,7 +96,7 @@ export default function WordList() {
 
   const handleDeleteAll = async () => {
     if (words.length === 0) return;
-    if (!confirm(`确定删除全部 ${words.length} 个单词？此操作不可恢复。`)) return;
+    if (!confirm(t('words.confirmDeleteAll', { count: words.length }))) return;
 
     setDeleting(true);
     try {
@@ -101,7 +104,7 @@ export default function WordList() {
       setWords([]);
       setSelectedIds(new Set());
     } catch (err) {
-      alert(err instanceof Error ? err.message : '删除失败');
+      alert(err instanceof Error ? err.message : t('words.deleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -120,30 +123,50 @@ export default function WordList() {
       setWords((prev) => prev.map((w) => (w.id === editingId ? updated : w)));
       setEditingId(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : '更新失败');
+      alert(err instanceof Error ? err.message : t('words.updateFailed'));
     }
   };
 
-  if (loading) return <div className="empty-state">加载中...</div>;
+  const handleExport = async () => {
+    if (words.length === 0) return;
+    setExporting(true);
+    try {
+      await api.exportWordsCsv();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : t('words.exportFailed'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  if (loading) return <div className="empty-state">{t('common.loading')}</div>;
 
   return (
     <div className="word-list-page fade-in">
       <div className="word-list-header">
-        <div>
-          <div className="page-header" style={{ marginBottom: 0 }}>
-            <h1 className="page-title">词库管理</h1>
-            <p className="page-desc">
-            共 {words.length} 个单词
-            {selectedIds.size > 0 && ` · 已选 ${selectedIds.size} 个`}
-            </p>
-          </div>
+        <div className="page-header word-list-header-main">
+          <h1 className="page-title">{t('words.title')}</h1>
+          <p className="page-desc">
+            {t('words.totalCount', { count: words.length })}
+            {selectedIds.size > 0 && t('words.selectedCount', { count: selectedIds.size })}
+          </p>
         </div>
-        <input
-          className="input search-input"
-          placeholder="搜索单词..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="word-list-header-tools">
+          <input
+            className="input search-input"
+            placeholder={t('words.searchPlaceholder')}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary word-list-export-btn"
+            disabled={words.length === 0 || exporting}
+            onClick={handleExport}
+          >
+            {exporting ? t('words.exporting') : t('words.exportCsv')}
+          </button>
+        </div>
       </div>
 
       {words.length > 0 && (
@@ -157,7 +180,7 @@ export default function WordList() {
               }}
               onChange={toggleSelectAll}
             />
-            <span>{allFilteredSelected ? '取消全选' : '全选当前列表'}</span>
+            <span>{allFilteredSelected ? t('words.deselectAll') : t('words.selectAll')}</span>
           </label>
           <div className="word-toolbar-actions">
             <button
@@ -165,14 +188,10 @@ export default function WordList() {
               disabled={selectedIds.size === 0 || deleting}
               onClick={handleDeleteSelected}
             >
-              删除选中 ({selectedIds.size})
+              {t('words.deleteSelected', { count: selectedIds.size })}
             </button>
-            <button
-              className="btn btn-danger"
-              disabled={deleting}
-              onClick={handleDeleteAll}
-            >
-              全部删除
+            <button className="btn btn-danger" disabled={deleting} onClick={handleDeleteAll}>
+              {t('words.deleteAll')}
             </button>
           </div>
         </div>
@@ -180,7 +199,7 @@ export default function WordList() {
 
       {filtered.length === 0 ? (
         <div className="empty-state card">
-          <p>{search ? '没有匹配的单词' : '词库为空，请先导入单词'}</p>
+          <p>{search ? t('words.noMatch') : t('words.emptyLibrary')}</p>
         </div>
       ) : (
         <div className="word-table card">
@@ -204,13 +223,10 @@ export default function WordList() {
                   />
                   <div className="word-actions">
                     <button className="btn btn-primary" onClick={saveEdit}>
-                      保存
+                      {t('common.save')}
                     </button>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setEditingId(null)}
-                    >
-                      取消
+                    <button className="btn btn-secondary" onClick={() => setEditingId(null)}>
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </>
@@ -231,14 +247,14 @@ export default function WordList() {
                       style={{ padding: '6px 12px', fontSize: '0.8125rem' }}
                       onClick={() => startEdit(word)}
                     >
-                      编辑
+                      {t('common.edit')}
                     </button>
                     <button
                       className="btn btn-danger"
                       style={{ padding: '6px 12px', fontSize: '0.8125rem' }}
                       onClick={() => handleDelete(word.id)}
                     >
-                      删除
+                      {t('common.delete')}
                     </button>
                   </div>
                 </>

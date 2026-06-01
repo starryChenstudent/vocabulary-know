@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { api, type ImportResult } from '../api/client';
+import { useLocale } from '../components/LocaleProvider';
 import { isHeicFile, loadImagePreview, revokePreviewUrl } from '../utils/imagePreview';
 import { compressImage, needsCompression } from '../utils/imageCompression';
 import './Import.css';
@@ -12,6 +13,7 @@ interface EditableWord {
 }
 
 export default function Import() {
+  const { t } = useLocale();
   const [tab, setTab] = useState<Tab>('image');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export default function Import() {
       .catch((err) => {
         console.error(err);
         if (isHeicFile(file)) {
-          setError(err instanceof Error ? err.message : 'HEIC 预览失败');
+          setError(err instanceof Error ? err.message : t('import.heicPreviewFailed'));
         }
       })
       .finally(() => setPreviewLoading(false));
@@ -74,7 +76,7 @@ export default function Import() {
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       if (err instanceof Error && err.message.toLowerCase().includes('abort')) return;
-      setError(err instanceof Error ? err.message : '识别失败');
+      setError(err instanceof Error ? err.message : t('import.ocrFailed'));
     } finally {
       setLoading(false);
       abortRef.current = null;
@@ -83,7 +85,7 @@ export default function Import() {
 
   const handleTextImport = async () => {
     if (!text.trim()) {
-      setError('请输入单词文本');
+      setError(t('import.enterText'));
       return;
     }
     setLoading(true);
@@ -96,7 +98,7 @@ export default function Import() {
       setResult(res);
       setEditableWords(res.parsed.map((w) => ({ ...w })));
     } catch (err) {
-      setError(err instanceof Error ? err.message : '导入失败');
+      setError(err instanceof Error ? err.message : t('import.ocrFailed'));
     } finally {
       setLoading(false);
     }
@@ -105,7 +107,7 @@ export default function Import() {
   const handleConfirm = async () => {
     const words = editableWords.filter((w) => w.english.trim() && w.chinese.trim());
     if (words.length === 0) {
-      setError('请至少保留一个有效单词');
+      setError(t('import.keepOneWord'));
       return;
     }
     setConfirming(true);
@@ -113,16 +115,16 @@ export default function Import() {
     try {
       const res = await api.confirmImport(words);
       if (res.imported === 0 && res.duplicates === 0) {
-        setError('导入失败，未能写入词库，请稍后重试');
+        setError(t('import.importFailed'));
         return;
       }
       if (res.imported === 0 && res.duplicates > 0) {
-        setError(`全部为重复词条，未新增（跳过 ${res.duplicates} 个）`);
+        setError(t('import.allDuplicates', { count: res.duplicates }));
       }
       setResult(res);
       setEditableWords(res.parsed);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '导入失败');
+      setError(err instanceof Error ? err.message : t('import.importFailed'));
     } finally {
       setConfirming(false);
     }
@@ -201,7 +203,7 @@ export default function Import() {
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       if (err instanceof Error && err.message.toLowerCase().includes('abort')) return;
-      setError(err instanceof Error ? err.message : '识别失败');
+      setError(err instanceof Error ? err.message : t('import.ocrFailed'));
     } finally {
       setLoading(false);
       abortRef.current = null;
@@ -223,11 +225,19 @@ export default function Import() {
 
   const isSaved = (result?.imported ?? 0) > 0;
 
+  const engineLabel = (engine: string) => {
+    if (engine === 'dashscope') return t('import.engineDashscope');
+    if (engine === 'openai') return t('import.engineOpenai');
+    return t('import.engineTesseract');
+  };
+
+  const validCount = editableWords.filter((w) => w.english && w.chinese).length;
+
   return (
     <div className="import-page fade-in">
       <div className="page-header">
-        <h1 className="page-title">导入单词</h1>
-        <p className="page-desc">拍照上传或粘贴文本，每行「英文 + 中文」，识别后可编辑再导入</p>
+        <h1 className="page-title">{t('import.title')}</h1>
+        <p className="page-desc">{t('import.desc')}</p>
       </div>
 
       <div className="tab-bar">
@@ -235,13 +245,13 @@ export default function Import() {
           className={`tab ${tab === 'image' ? 'active' : ''}`}
           onClick={() => setTab('image')}
         >
-          拍照 / 上传图片
+          {t('import.tabImage')}
         </button>
         <button
           className={`tab ${tab === 'text' ? 'active' : ''}`}
           onClick={() => setTab('text')}
         >
-          粘贴文本
+          {t('import.tabText')}
         </button>
       </div>
 
@@ -263,18 +273,18 @@ export default function Import() {
             />
             {preview ? (
               <div className="upload-preview-wrap">
-                <img src={preview} alt="预览" className="upload-preview" />
+                <img src={preview} alt={t('import.previewAlt')} className="upload-preview" />
               </div>
             ) : previewLoading ? (
               <div className="upload-preview-loading">
                 <div className="loading-spinner" />
-                <p>HEIC 预览转换中...</p>
+                <p>{t('import.heicConverting')}</p>
               </div>
             ) : (
               <>
                 <div className="upload-icon">+</div>
-                <p>点击选择图片或拖拽到此处</p>
-                <p className="upload-hint">支持 JPG、PNG、HEIC（iPhone 照片）</p>
+                <p>{t('import.uploadHint')}</p>
+                <p className="upload-hint">{t('import.uploadFormat')}</p>
               </>
             )}
           </div>
@@ -285,7 +295,7 @@ export default function Import() {
         <div className="card">
           <textarea
             className="input textarea"
-            placeholder={`每行一个单词，格式：英文 + 中文\napple 苹果\nforeigner 外国人\nbanana - 香蕉`}
+            placeholder={t('import.textPlaceholder')}
             value={text}
             onChange={(e) => setText(e.target.value)}
           />
@@ -295,15 +305,17 @@ export default function Import() {
             onClick={handleTextImport}
             disabled={loading}
           >
-            {loading ? '解析中...' : '识别文本'}
+            {loading ? t('import.parsing') : t('import.parseText')}
           </button>
         </div>
       )}
 
       {loading && (
-        <div className="loading-bar">
-          <div className="loading-spinner" />
-          <p>{tab === 'image' ? 'OCR 识别中，手写内容可能需更长时间...' : '解析中...'}</p>
+        <div className="import-loading-overlay" role="status" aria-live="polite">
+          <div className="import-loading-panel">
+            <div className="loading-spinner" />
+            <p>{tab === 'image' ? t('import.ocrLoading') : t('import.parsing')}</p>
+          </div>
         </div>
       )}
 
@@ -317,23 +329,21 @@ export default function Import() {
 
           {result.ocrEngine && (
             <div className="result-meta">
-              识别引擎：
-              <span className="badge badge-purple">
-                {result.ocrEngine === 'dashscope'
-                  ? '百炼 OCR'
-                  : result.ocrEngine === 'openai'
-                    ? 'OpenAI 视觉'
-                    : 'Tesseract OCR'}
-              </span>
+              {t('import.engine')}：
+              <span className="badge badge-purple">{engineLabel(result.ocrEngine)}</span>
             </div>
           )}
 
           {isSaved ? (
             <>
               <div className="result-summary">
-                <span className="badge badge-success">已导入 {result.imported} 个</span>
+                <span className="badge badge-success">
+                  {t('import.imported', { count: result.imported })}
+                </span>
                 {result.duplicates > 0 && (
-                  <span className="badge badge-muted">跳过重复 {result.duplicates} 个</span>
+                  <span className="badge badge-muted">
+                    {t('import.skippedDup', { count: result.duplicates })}
+                  </span>
                 )}
               </div>
               <div className="import-actions">
@@ -343,15 +353,17 @@ export default function Import() {
                     className="btn btn-secondary"
                     onClick={() => handleReupload(false)}
                   >
-                    重新导入
+                    {t('import.reimport')}
                   </button>
                 )}
               </div>
             </>
           ) : (
             <div className="result-summary">
-              <span className="badge badge-purple">识别到 {editableWords.length} 个词条</span>
-              <span className="badge badge-muted">请核对后确认导入</span>
+              <span className="badge badge-purple">
+                {t('import.parsed', { count: editableWords.length })}
+              </span>
+              <span className="badge badge-muted">{t('import.reviewHint')}</span>
             </div>
           )}
 
@@ -360,8 +372,8 @@ export default function Import() {
               <div className="editable-list">
                 {editableWords.length === 0 ? (
                   <div className="empty-state">
-                    <p>未识别到有效单词对</p>
-                    <p>可手动添加，或查看下方原始文本</p>
+                    <p>{t('import.noWords')}</p>
+                    <p>{t('import.noWordsHint')}</p>
                   </div>
                 ) : (
                   editableWords.map((w, i) => (
@@ -370,20 +382,20 @@ export default function Import() {
                         className="input"
                         value={w.english}
                         onChange={(e) => updateWord(i, 'english', e.target.value)}
-                        placeholder="英文"
+                        placeholder={t('common.english')}
                       />
                       <input
                         className="input"
                         value={w.chinese}
                         onChange={(e) => updateWord(i, 'chinese', e.target.value)}
-                        placeholder="中文"
+                        placeholder={t('common.chinese')}
                       />
                       <button
                         type="button"
                         className="btn btn-danger editable-remove-btn"
                         onClick={() => removeWord(i)}
-                        aria-label="删除"
-                        title="删除"
+                        aria-label={t('common.delete')}
+                        title={t('common.delete')}
                       >
                         ×
                       </button>
@@ -394,14 +406,16 @@ export default function Import() {
 
               <div className="import-actions">
                 <button className="btn btn-secondary" onClick={addWord}>
-                  + 手动添加
+                  {t('import.addManual')}
                 </button>
                 <button
                   className="btn btn-primary"
                   onClick={handleConfirm}
                   disabled={confirming}
                 >
-                  {confirming ? '导入中...' : `确认导入 (${editableWords.filter((w) => w.english && w.chinese).length})`}
+                  {confirming
+                    ? t('import.importing')
+                    : t('import.confirmImport', { count: validCount })}
                 </button>
               </div>
             </>
@@ -409,28 +423,28 @@ export default function Import() {
 
           {result.rawText && (
             <details className="raw-text" open={editableWords.length === 0}>
-              <summary>查看 OCR 原始文本</summary>
+              <summary>{t('import.rawText')}</summary>
               <pre>{result.rawText}</pre>
             </details>
           )}
         </div>
       )}
 
-      {tab === 'image' && (preview || previewLoading || loading) && (
+      {tab === 'image' && (preview || previewLoading || loading || result) && (
         <div className="import-float-actions">
           <button
             type="button"
             className={`btn ${loading ? 'btn-danger' : 'btn-primary'} import-float-btn`}
             onClick={handleReRecognize}
           >
-            {loading ? '取消识别' : '重新识别'}
+            {loading ? t('import.cancelOcr') : t('import.retryOcr')}
           </button>
           <button
             type="button"
             className="btn btn-secondary import-float-btn"
             onClick={() => handleReupload()}
           >
-            重新上传
+            {t('import.reupload')}
           </button>
         </div>
       )}

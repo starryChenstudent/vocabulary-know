@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import LocaleToggle from '../components/LocaleToggle';
+import { useLocale } from '../components/LocaleProvider';
 import './Login.css';
 
 function LogoMark() {
@@ -31,6 +33,7 @@ function LogoMark() {
 
 export default function Login() {
   const { user, loading, login, register } = useAuth();
+  const { t } = useLocale();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -46,8 +49,9 @@ export default function Login() {
   if (loading) {
     return (
       <div className="login-page">
+        <LocaleToggle variant="login" />
         <div className="login-card card">
-          <p className="login-muted">加载中…</p>
+          <p className="login-muted">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -76,31 +80,32 @@ export default function Login() {
 
   return (
     <div className="login-page">
+      <LocaleToggle variant="login" />
       <div className="login-card card fade-in">
         <div className="login-brand">
           <LogoMark />
           <div>
             <h1 className="login-title">Vocabulary iknow</h1>
-            <p className="login-subtitle">登录后继续你的单词学习</p>
+            <p className="login-subtitle">{t('login.subtitle')}</p>
           </div>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
           <label className="login-label">
-            用户名
+            {t('login.username')}
             <input
               className="input"
               type="text"
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="2–32 个字符"
+              placeholder={t('login.usernamePlaceholder')}
               required
             />
           </label>
 
           <label className="login-label">
-            密码
+            {t('login.password')}
             <div className="login-password-wrap">
               <input
                 className="input login-password-input"
@@ -108,15 +113,15 @@ export default function Login() {
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="至少 6 位"
+                placeholder={t('login.passwordPlaceholder')}
                 required
               />
               <button
                 type="button"
                 className="login-password-toggle"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? '隐藏密码' : '显示密码'}
-                title={showPassword ? '隐藏密码' : '显示密码'}
+                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+                title={showPassword ? t('login.hidePassword') : t('login.showPassword')}
               >
                 {showPassword ? (
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -137,13 +142,17 @@ export default function Login() {
           {error && <p className="error-msg">{error}</p>}
 
           <button className="btn btn-primary login-submit" type="submit" disabled={submitting}>
-            {submitting ? '请稍候…' : mode === 'login' ? '登录' : '注册'}
+            {submitting
+              ? t('login.submitting')
+              : mode === 'login'
+                ? t('login.submitLogin')
+                : t('login.submitRegister')}
           </button>
         </form>
 
         {registrationAllowed ? (
           <p className="login-switch">
-            {mode === 'login' ? '还没有账号？' : '已有账号？'}
+            {mode === 'login' ? t('login.noAccount') : t('login.hasAccount')}
             <button
               type="button"
               className="login-switch-btn"
@@ -153,11 +162,11 @@ export default function Login() {
                 setError('');
               }}
             >
-              {mode === 'login' ? '立即注册' : '去登录'}
+              {mode === 'login' ? t('login.registerNow') : t('login.goLogin')}
             </button>
           </p>
         ) : (
-          <p className="login-muted">注册已关闭，请联系管理员获取账号。</p>
+          <p className="login-muted">{t('login.registrationClosed')}</p>
         )}
       </div>
     </div>

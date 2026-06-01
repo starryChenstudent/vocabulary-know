@@ -2,10 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { api, type AdminStats, type AdminUserRow } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from '../components/LocaleProvider';
 import './Admin.css';
 
 export default function Admin() {
   const { user } = useAuth();
+  const { t } = useLocale();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,11 +28,11 @@ export default function Admin() {
       setStats(statsData);
       setUsers(usersData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败');
+      setError(err instanceof Error ? err.message : t('admin.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadData();
@@ -48,11 +50,11 @@ export default function Admin() {
     setMessage('');
     try {
       await api.resetUserPassword(passwordUser.id, newPassword);
-      setMessage(`已重置 ${passwordUser.username} 的密码`);
+      setMessage(t('admin.passwordReset', { username: passwordUser.username }));
       setPasswordUser(null);
       setNewPassword('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '重置失败');
+      setError(err instanceof Error ? err.message : t('admin.resetFailed'));
     } finally {
       setSavingPassword(false);
     }
@@ -65,25 +67,25 @@ export default function Admin() {
     setMessage('');
     try {
       await api.deleteUser(deleteUser.id);
-      setMessage(`已删除用户 ${deleteUser.username}`);
+      setMessage(t('admin.userDeleted', { username: deleteUser.username }));
       setDeleteUser(null);
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败');
+      setError(err instanceof Error ? err.message : t('admin.deleteFailed'));
     } finally {
       setDeleting(false);
     }
   }
 
   if (loading) {
-    return <div className="empty-state">加载中…</div>;
+    return <div className="empty-state">{t('common.loading')}</div>;
   }
 
   return (
     <div className="admin-page fade-in">
       <div className="page-header">
-        <h1 className="page-title">管理后台</h1>
-        <p className="page-desc">查看用户与词库数据，重置密码或删除账号</p>
+        <h1 className="page-title">{t('admin.title')}</h1>
+        <p className="page-desc">{t('admin.desc')}</p>
       </div>
 
       {error && <div className="error-msg">{error}</div>}
@@ -92,23 +94,23 @@ export default function Admin() {
       <section className="stat-grid admin-stats">
         <div className="stat-item stat-item--accent">
           <div className="stat-value">{stats?.userCount ?? 0}</div>
-          <div className="stat-label">用户总数</div>
+          <div className="stat-label">{t('admin.users')}</div>
         </div>
         <div className="stat-item stat-item--success">
           <div className="stat-value">{stats?.totalWords ?? 0}</div>
-          <div className="stat-label">单词总量</div>
+          <div className="stat-label">{t('admin.totalWords')}</div>
         </div>
         <div className="stat-item stat-item--purple">
           <div className="stat-value">{stats?.adminCount ?? 0}</div>
-          <div className="stat-label">管理员</div>
+          <div className="stat-label">{t('admin.admins')}</div>
         </div>
       </section>
 
       <div className="card admin-table-card">
         <div className="admin-table-header">
-          <h2>用户列表</h2>
+          <h2>{t('admin.userList')}</h2>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => loadData()}>
-            刷新
+            {t('common.refresh')}
           </button>
         </div>
 
@@ -117,18 +119,18 @@ export default function Admin() {
             <thead>
               <tr>
                 <th>ID</th>
-                <th>用户名</th>
-                <th>单词数</th>
-                <th>角色</th>
-                <th>注册时间</th>
-                <th>操作</th>
+                <th>{t('admin.username')}</th>
+                <th>{t('admin.wordCount')}</th>
+                <th>{t('admin.role')}</th>
+                <th>{t('admin.createdAt')}</th>
+                <th>{t('admin.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {users.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="admin-empty">
-                    暂无用户
+                    {t('admin.noUsers')}
                   </td>
                 </tr>
               ) : (
@@ -141,9 +143,9 @@ export default function Admin() {
                     </td>
                     <td>
                       {row.is_admin ? (
-                        <span className="badge badge-success">管理员</span>
+                        <span className="badge badge-success">{t('admin.adminRole')}</span>
                       ) : (
-                        <span className="badge badge-muted">普通用户</span>
+                        <span className="badge badge-muted">{t('admin.userRole')}</span>
                       )}
                     </td>
                     <td className="admin-date">{row.created_at}</td>
@@ -159,7 +161,7 @@ export default function Admin() {
                             setError('');
                           }}
                         >
-                          改密码
+                          {t('admin.resetPassword')}
                         </button>
                         <button
                           type="button"
@@ -171,7 +173,7 @@ export default function Admin() {
                             setError('');
                           }}
                         >
-                          删除
+                          {t('admin.deleteUser')}
                         </button>
                       </div>
                     </td>
@@ -186,15 +188,15 @@ export default function Admin() {
       {passwordUser && (
         <div className="admin-modal-backdrop" onClick={() => setPasswordUser(null)}>
           <div className="admin-modal card" onClick={(e) => e.stopPropagation()}>
-            <h3>重置密码</h3>
+            <h3>{t('admin.resetTitle')}</h3>
             <p className="admin-modal-desc">
-              为用户 <strong>{passwordUser.username}</strong> 设置新密码
+              {t('admin.resetDesc', { username: passwordUser.username })}
             </p>
             <form onSubmit={handleResetPassword}>
               <input
                 className="input"
                 type="password"
-                placeholder="新密码（至少 6 位）"
+                placeholder={t('admin.newPassword')}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 minLength={6}
@@ -207,10 +209,10 @@ export default function Admin() {
                   className="btn btn-secondary"
                   onClick={() => setPasswordUser(null)}
                 >
-                  取消
+                  {t('common.cancel')}
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={savingPassword}>
-                  {savingPassword ? '保存中…' : '确认重置'}
+                  {savingPassword ? t('admin.resetting') : t('admin.confirmReset')}
                 </button>
               </div>
             </form>
@@ -221,14 +223,16 @@ export default function Admin() {
       {deleteUser && (
         <div className="admin-modal-backdrop" onClick={() => setDeleteUser(null)}>
           <div className="admin-modal card" onClick={(e) => e.stopPropagation()}>
-            <h3>删除用户</h3>
+            <h3>{t('admin.deleteTitle')}</h3>
             <p className="admin-modal-desc">
-              确定删除用户 <strong>{deleteUser.username}</strong> 吗？该用户的{' '}
-              <strong>{deleteUser.word_count}</strong> 个单词及全部测试记录将被永久删除，无法恢复。
+              {t('admin.deleteDesc', {
+                username: deleteUser.username,
+                count: deleteUser.word_count,
+              })}
             </p>
             <div className="admin-modal-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setDeleteUser(null)}>
-                取消
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -236,7 +240,7 @@ export default function Admin() {
                 onClick={handleDeleteUser}
                 disabled={deleting}
               >
-                {deleting ? '删除中…' : '确认删除'}
+                {deleting ? t('admin.deleting') : t('admin.confirmDelete')}
               </button>
             </div>
           </div>

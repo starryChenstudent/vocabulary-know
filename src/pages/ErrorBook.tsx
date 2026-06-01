@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
-import { api, type ErrorWordEntry, RESULT_LABELS } from '../api/client';
+import { api, type ErrorWordEntry, type ResultType } from '../api/client';
+import { useLocale } from '../components/LocaleProvider';
 import './ErrorBook.css';
 
 export default function ErrorBook() {
+  const { t } = useLocale();
   const [entries, setEntries] = useState<ErrorWordEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const resultLabel = (type: ResultType) => t(`result.${type}`);
 
   useEffect(() => {
     api
@@ -14,19 +18,19 @@ export default function ErrorBook() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="empty-state">加载中...</div>;
+  if (loading) return <div className="empty-state">{t('common.loading')}</div>;
 
   return (
     <div className="error-book-page fade-in">
       <div className="page-header">
-        <h1 className="page-title">错词本</h1>
-        <p className="page-desc">自动汇总所有测试中的错误记录</p>
+        <h1 className="page-title">{t('errorBook.title')}</h1>
+        <p className="page-desc">{t('errorBook.desc')}</p>
       </div>
 
       {entries.length === 0 ? (
         <div className="empty-state card">
-          <p>暂无错词记录</p>
-          <p>完成测试后，错误的单词会自动收录到这里</p>
+          <p>{t('errorBook.empty')}</p>
+          <p>{t('errorBook.emptyHint')}</p>
         </div>
       ) : (
         <div className="error-list">
@@ -37,13 +41,15 @@ export default function ErrorBook() {
                   <span className="mono error-en">{entry.word.english}</span>
                   <span className="error-cn">{entry.word.chinese}</span>
                 </div>
-                <span className="badge badge-error">{entry.errorCount} 次错误</span>
+                <span className="badge badge-error">
+                  {t('errorBook.errorTimes', { count: entry.errorCount })}
+                </span>
               </div>
               <div className="error-item-meta">
                 <span>
-                  最近错误：
+                  {t('errorBook.lastError')}
                   <span className={`badge badge-${getBadgeType(entry.lastError)}`}>
-                    {RESULT_LABELS[entry.lastError]}
+                    {resultLabel(entry.lastError)}
                   </span>
                 </span>
                 <span className="error-date">{entry.lastErrorDate}</span>
@@ -51,17 +57,17 @@ export default function ErrorBook() {
               <div className="error-types">
                 {entry.errorTypes.spelling_error > 0 && (
                   <span className="badge badge-error">
-                    拼写 {entry.errorTypes.spelling_error}
+                    {t('errorBook.spelling')} {entry.errorTypes.spelling_error}
                   </span>
                 )}
                 {entry.errorTypes.meaning_wrong > 0 && (
                   <span className="badge badge-warning">
-                    释义 {entry.errorTypes.meaning_wrong}
+                    {t('errorBook.meaning')} {entry.errorTypes.meaning_wrong}
                   </span>
                 )}
                 {entry.errorTypes.unknown > 0 && (
                   <span className="badge badge-muted">
-                    不会 {entry.errorTypes.unknown}
+                    {t('errorBook.unknownShort')} {entry.errorTypes.unknown}
                   </span>
                 )}
               </div>

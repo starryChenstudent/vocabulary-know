@@ -72,6 +72,23 @@ export function getWordCount(userId: number): number {
   return row.count;
 }
 
+function escapeCsvField(value: string): string {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+export function exportWordsCsv(userId: number): string {
+  const words = getAllWords(userId);
+  const header = 'english,chinese,created_at';
+  const rows = words.map(
+    (word) =>
+      `${escapeCsvField(word.english)},${escapeCsvField(word.chinese)},${escapeCsvField(word.created_at)}`
+  );
+  return `\uFEFF${[header, ...rows].join('\n')}`;
+}
+
 export function getNewWordsToday(userId: number): number {
   const today = getTodayDate();
   const row = db

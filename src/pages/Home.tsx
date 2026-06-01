@@ -1,20 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type StatsOverview } from '../api/client';
+import { useLocale } from '../components/LocaleProvider';
+import { useAuth } from '../context/AuthContext';
 import { useNow } from '../hooks/useTime';
 import { formatFullDate, getGreeting } from '../utils/time';
 import './Home.css';
 
 const ACTIONS = [
-  { to: '/import', title: '导入单词', desc: '拍照或粘贴文本，OCR 自动识别', tone: 'teal', symbol: '↑' },
-  { to: '/test', title: '每日测试', desc: '只测今日导入的新词', tone: 'green', symbol: 'Aa' },
-  { to: '/review', title: '强化复习', desc: 'weeklyReviewCount 个待复习单词', tone: 'purple', symbol: '↻' },
-  { to: '/error-book', title: '错词本', desc: 'errorBookCount 个错误记录', tone: 'red', symbol: '×' },
-  { to: '/report', title: '学习报告', desc: '查看每日学习数据与趋势', tone: 'amber', symbol: '▤' },
-  { to: '/words', title: '词库管理', desc: '浏览、编辑、删除单词', tone: 'slate', symbol: '≡' },
+  { to: '/import', titleKey: 'home.importTitle', descKey: 'home.importDesc', tone: 'teal', symbol: '↑' },
+  { to: '/test', titleKey: 'home.testTitle', descKey: 'home.testDesc', tone: 'green', symbol: 'Aa' },
+  {
+    to: '/review',
+    titleKey: 'home.reviewTitle',
+    descKey: 'home.reviewDesc',
+    tone: 'purple',
+    symbol: '↻',
+    countKey: 'weeklyReviewCount' as const,
+  },
+  {
+    to: '/error-book',
+    titleKey: 'home.errorTitle',
+    descKey: 'home.errorDesc',
+    tone: 'red',
+    symbol: '×',
+    countKey: 'errorBookCount' as const,
+  },
+  { to: '/report', titleKey: 'home.reportTitle', descKey: 'home.reportDesc', tone: 'amber', symbol: '▤' },
+  { to: '/words', titleKey: 'home.wordsTitle', descKey: 'home.wordsDesc', tone: 'slate', symbol: '≡' },
 ] as const;
 
 export default function Home() {
+  const { t, locale } = useLocale();
+  const { user } = useAuth();
   const now = useNow(60000);
   const [stats, setStats] = useState<StatsOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -27,45 +45,47 @@ export default function Home() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="empty-state">加载中...</div>;
+  if (loading) return <div className="empty-state">{t('common.loading')}</div>;
 
-  const getDesc = (key: string) => {
-    if (!stats) return key;
-    return key
-      .replace('weeklyReviewCount', String(stats.weeklyReviewCount))
-      .replace('errorBookCount', String(stats.errorBookCount));
+  const getDesc = (descKey: string, countKey?: 'weeklyReviewCount' | 'errorBookCount') => {
+    if (countKey && stats) {
+      return t(descKey, { count: stats[countKey] });
+    }
+    return t(descKey);
   };
 
   return (
     <div className="home fade-in">
       <section className="hero card">
         <p className="hero-time">
-          {getGreeting(now)} · {formatFullDate(now)}
+          {t('home.heroTime', {
+            greeting: getGreeting(now, t),
+            username: user?.username ?? '',
+            date: formatFullDate(now, locale),
+          })}
         </p>
         <h1>
           Vocabulary <span className="brand-accent">iknow</span>
         </h1>
-        <p className="hero-desc">
-          拍照导入单词，每日双模式测试，错误驱动复习，形成完整记忆闭环
-        </p>
+        <p className="hero-desc">{t('home.desc')}</p>
       </section>
 
       <section className="stat-grid">
         <div className="stat-item stat-item--accent">
           <div className="stat-value">{stats?.totalWords ?? 0}</div>
-          <div className="stat-label">词库总量</div>
+          <div className="stat-label">{t('home.totalWords')}</div>
         </div>
         <div className="stat-item stat-item--success">
           <div className="stat-value">{stats?.todayTests ?? 0}</div>
-          <div className="stat-label">今日测试</div>
+          <div className="stat-label">{t('home.todayTests')}</div>
         </div>
         <div className="stat-item stat-item--purple">
           <div className="stat-value">{stats?.todayAccuracy ?? 0}%</div>
-          <div className="stat-label">今日正确率</div>
+          <div className="stat-label">{t('home.todayAccuracy')}</div>
         </div>
         <div className="stat-item stat-item--warning">
           <div className="stat-value">{stats?.streakDays ?? 0}</div>
-          <div className="stat-label">连续学习天</div>
+          <div className="stat-label">{t('home.streakDays')}</div>
         </div>
       </section>
 
@@ -80,8 +100,8 @@ export default function Home() {
               <span>{action.symbol}</span>
             </div>
             <div>
-              <h3>{action.title}</h3>
-              <p>{getDesc(action.desc)}</p>
+              <h3>{t(action.titleKey)}</h3>
+              <p>{getDesc(action.descKey, 'countKey' in action ? action.countKey : undefined)}</p>
             </div>
           </Link>
         ))}

@@ -1,5 +1,6 @@
 import { useNow } from '../hooks/useTime';
 import { formatClockTime, formatFullDate, formatShortDate } from '../utils/time';
+import { useLocale } from './LocaleProvider';
 import './ClockDisplay.css';
 
 interface ClockDisplayProps {
@@ -8,10 +9,12 @@ interface ClockDisplayProps {
 }
 
 export default function ClockDisplay({ collapsed = false, variant = 'sidebar' }: ClockDisplayProps) {
+  const { locale } = useLocale();
   const now = useNow();
 
-  const timeText = formatClockTime(now, !collapsed || variant === 'mobile');
-  const dateText = variant === 'mobile' ? formatShortDate(now) : formatFullDate(now);
+  const timeText = formatClockTime(now, !collapsed || variant === 'mobile', locale);
+  const dateText =
+    variant === 'mobile' ? formatShortDate(now, locale) : formatFullDate(now, locale);
 
   return (
     <div

@@ -2,7 +2,10 @@ import { NavLink } from 'react-router-dom';
 import { useEffect, useState, type ReactNode } from 'react';
 import ClockDisplay from './ClockDisplay';
 import ThemeToggle from './ThemeToggle';
+import LocaleToggle from './LocaleToggle';
+import MobileUserMenu from './MobileUserMenu';
 import { useAuth } from '../context/AuthContext';
+import { useLocale } from './LocaleProvider';
 import './Layout.css';
 
 function LogoMark() {
@@ -30,17 +33,17 @@ function LogoMark() {
   );
 }
 
-const NAV_ITEMS = [
-  { to: '/', label: '首页', icon: 'home' as const },
-  { to: '/import', label: '导入', icon: 'import' as const },
-  { to: '/test', label: '测试', icon: 'test' as const },
-  { to: '/report', label: '报告', icon: 'report' as const },
-  { to: '/error-book', label: '错词本', icon: 'error' as const },
-  { to: '/review', label: '复习', icon: 'review' as const },
-  { to: '/words', label: '词库', icon: 'words' as const },
-];
+const NAV_ROUTES = [
+  { to: '/', key: 'home', icon: 'home' as const },
+  { to: '/import', key: 'import', icon: 'import' as const },
+  { to: '/test', key: 'test', icon: 'test' as const },
+  { to: '/report', key: 'report', icon: 'report' as const },
+  { to: '/error-book', key: 'errorBook', icon: 'error' as const },
+  { to: '/review', key: 'review', icon: 'review' as const },
+  { to: '/words', key: 'words', icon: 'words' as const },
+] as const;
 
-type NavIconName = (typeof NAV_ITEMS)[number]['icon'] | 'admin';
+type NavIconName = (typeof NAV_ROUTES)[number]['icon'] | 'admin';
 
 function NavIcon({ name }: { name: NavIconName }) {
   switch (name) {
@@ -103,6 +106,7 @@ const STORAGE_KEY = 'vocabulary-iknow-sidebar-collapsed';
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
+  const { t } = useLocale();
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) === '1';
@@ -120,8 +124,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   }, [collapsed]);
 
   const navItems = user?.is_admin
-    ? [...NAV_ITEMS, { to: '/admin', label: '管理', icon: 'admin' as const }]
-    : NAV_ITEMS;
+    ? [...NAV_ROUTES, { to: '/admin', key: 'admin', icon: 'admin' as const }]
+    : [...NAV_ROUTES];
 
   return (
     <div className={`layout ${collapsed ? 'sidebar-collapsed' : ''}`}>
@@ -143,12 +147,12 @@ export default function Layout({ children }: { children: ReactNode }) {
               to={item.to}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               end={item.to === '/'}
-              title={collapsed ? item.label : undefined}
+              title={collapsed ? t(`nav.${item.key}`) : undefined}
             >
               <span className="nav-icon">
                 <NavIcon name={item.icon} />
               </span>
-              <span className="nav-label">{item.label}</span>
+              <span className="nav-label">{t(`nav.${item.key}`)}</span>
             </NavLink>
           ))}
         </nav>
@@ -166,8 +170,8 @@ export default function Layout({ children }: { children: ReactNode }) {
               type="button"
               className="sidebar-logout"
               onClick={() => logout()}
-              title="退出登录"
-              aria-label="退出登录"
+              title={t('common.logout')}
+              aria-label={t('common.logoutAria')}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M10 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2" />
@@ -175,13 +179,14 @@ export default function Layout({ children }: { children: ReactNode }) {
               </svg>
             </button>
           </div>
+          <LocaleToggle collapsed={collapsed} />
           <ThemeToggle collapsed={collapsed} />
           <button
             type="button"
             className="sidebar-toggle"
             onClick={() => setCollapsed((v) => !v)}
-            aria-label={collapsed ? '展开侧边栏' : '收起侧边栏'}
-            title={collapsed ? '展开' : '收起'}
+            aria-label={collapsed ? t('common.expand') : t('common.collapse')}
+            title={collapsed ? t('common.expand') : t('common.collapse')}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               {collapsed ? (
@@ -190,7 +195,9 @@ export default function Layout({ children }: { children: ReactNode }) {
                 <path d="M15 18l-6-6 6-6" />
               )}
             </svg>
-            <span className="sidebar-toggle-text">{collapsed ? '展开' : '收起'}</span>
+            <span className="sidebar-toggle-text">
+              {collapsed ? t('common.expand') : t('common.collapse')}
+            </span>
           </button>
         </div>
       </aside>
@@ -202,8 +209,12 @@ export default function Layout({ children }: { children: ReactNode }) {
       </div>
 
       <div className="mobile-status-bar">
-        <ClockDisplay variant="mobile" />
-        <ThemeToggle variant="mobile" />
+        <MobileUserMenu />
+        <div className="mobile-status-bar__tools">
+          <ClockDisplay variant="mobile" />
+          <LocaleToggle variant="mobile" />
+          <ThemeToggle variant="mobile" />
+        </div>
       </div>
 
       <nav className="nav-mobile">
@@ -217,7 +228,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <span className="nav-mobile-icon">
               <NavIcon name={item.icon} />
             </span>
-            <span className="nav-mobile-label">{item.label}</span>
+            <span className="nav-mobile-label">{t(`nav.${item.key}`)}</span>
           </NavLink>
         ))}
       </nav>

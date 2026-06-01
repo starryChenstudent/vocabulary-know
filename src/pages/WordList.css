@@ -1,10 +1,49 @@
 .word-list-header {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: 14px;
   margin-bottom: 18px;
-  flex-wrap: wrap;
+}
+
+.word-list-header-main {
+  margin-bottom: 0;
+}
+
+.word-list-header-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.word-list-header-tools .search-input {
+  flex: 1;
+  min-width: 0;
+  max-width: none;
+}
+
+.word-list-export-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .word-list-header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .word-list-header-tools {
+    width: auto;
+    flex: 0 1 360px;
+  }
+
+  .word-list-header-tools .search-input {
+    flex: 1;
+    max-width: 280px;
+  }
 }
 
 .search-input {

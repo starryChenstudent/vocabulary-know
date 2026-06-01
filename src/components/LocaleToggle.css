@@ -1,13 +1,14 @@
-.theme-toggle {
+.locale-toggle {
   position: relative;
   width: 100%;
 }
 
-.theme-toggle--mobile {
+.locale-toggle--mobile,
+.locale-toggle--login {
   width: auto;
 }
 
-.theme-trigger {
+.locale-trigger {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -23,39 +24,44 @@
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.theme-toggle--collapsed .theme-trigger,
-.theme-toggle--mobile .theme-trigger {
+.locale-toggle--collapsed .locale-trigger,
+.locale-toggle--mobile .locale-trigger,
+.locale-toggle--login .locale-trigger {
   width: var(--mobile-bar-btn, 44px);
   height: var(--mobile-bar-btn, 44px);
   padding: 0;
   gap: 0;
 }
 
-.theme-toggle--mobile .theme-trigger {
+.locale-toggle--mobile .locale-trigger,
+.locale-toggle--login .locale-trigger {
   background: var(--bg-card);
   box-shadow: var(--shadow-sm);
 }
 
-.theme-trigger:hover {
+.locale-trigger:hover {
   background: var(--bg-hover);
   color: var(--accent);
 }
 
-.theme-trigger svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
+.locale-trigger-badge {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-.theme-trigger-text {
+.locale-trigger-text {
   white-space: nowrap;
 }
 
-.theme-toggle--collapsed .theme-trigger-text {
+.locale-toggle--collapsed .locale-trigger-text {
   display: none;
 }
 
-.theme-menu {
+.locale-menu {
   position: absolute;
   left: 0;
   right: 0;
@@ -66,22 +72,24 @@
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   z-index: 120;
-  animation: themeMenuIn 0.16s ease;
+  animation: localeMenuIn 0.16s ease;
 }
 
-.theme-toggle--collapsed .theme-menu,
-.theme-toggle--mobile .theme-menu {
+.locale-toggle--collapsed .locale-menu,
+.locale-toggle--mobile .locale-menu,
+.locale-toggle--login .locale-menu {
   left: auto;
   right: 0;
-  min-width: 132px;
+  min-width: 148px;
 }
 
-.theme-toggle--mobile .theme-menu {
+.locale-toggle--mobile .locale-menu,
+.locale-toggle--login .locale-menu {
   bottom: auto;
   top: calc(100% + 8px);
 }
 
-.theme-menu-item {
+.locale-menu-item {
   display: block;
   width: 100%;
   padding: 10px 12px;
@@ -94,17 +102,17 @@
   transition: background 0.15s, color 0.15s;
 }
 
-.theme-menu-item:hover {
+.locale-menu-item:hover {
   background: var(--bg-hover);
   color: var(--text);
 }
 
-.theme-menu-item.active {
+.locale-menu-item.active {
   color: var(--accent);
   background: var(--accent-soft);
 }
 
-@keyframes themeMenuIn {
+@keyframes localeMenuIn {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -113,4 +121,11 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.login-page .locale-toggle--login {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 50;
 }

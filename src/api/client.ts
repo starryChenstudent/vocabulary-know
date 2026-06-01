@@ -92,6 +92,17 @@ export interface SubmitResult {
   expected: string;
 }
 
+export interface TranslateResult {
+  direction: TestMode;
+  input: string;
+  vocabularyMatches: Word[];
+  translation: string | null;
+  english: string | null;
+  chinese: string | null;
+  source: 'vocabulary' | 'llm' | 'none';
+  llmAvailable: boolean;
+}
+
 const BASE = '/api';
 
 let onUnauthorized: (() => void) | null = null;
@@ -142,6 +153,30 @@ export const api = {
 
   getStats: () => request<StatsOverview>('/stats'),
   getWords: () => request<Word[]>('/words'),
+  exportWordsCsv: async (): Promise<void> => {
+    let res: Response;
+    try {
+      res = await fetch(`${BASE}/words/export`, { credentials: 'include' });
+    } catch {
+      throw new Error('无法连接服务器，请确认后端已启动（npm run dev）');
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: '导出失败' }));
+      if (res.status === 401) onUnauthorized?.();
+      throw new Error(err.error || '导出失败');
+    }
+    const text = await res.text();
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    const match = disposition.match(/filename="([^"]+)"/);
+    const filename = match?.[1] ?? `vocabulary-${new Date().toISOString().slice(0, 10)}.csv`;
+    const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  },
   deleteWord: (id: number) => request<{ success: boolean }>(`/words/${id}`, { method: 'DELETE' }),
   deleteWords: (ids: number[]) =>
     request<{ success: boolean; deleted: number }>('/words/batch-delete', {
@@ -193,6 +228,12 @@ export const api = {
     request<ImportResult>('/import/confirm', {
       method: 'POST',
       body: JSON.stringify({ words }),
+    }),
+
+  translate: (text: string, direction: TestMode) =>
+    request<TranslateResult>('/translate', {
+      method: 'POST',
+      body: JSON.stringify({ text, direction }),
     }),
 
   getDailyTest: (mode: TestMode) =>

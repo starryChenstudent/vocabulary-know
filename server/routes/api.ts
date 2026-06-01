@@ -10,6 +10,7 @@ import {
   deleteAllWords,
   updateWord,
   getWordById,
+  exportWordsCsv,
 } from '../services/wordService.js';
 import {
   getDailyTest,
@@ -27,6 +28,7 @@ import {
   classifyEnToCnResult,
   classifyCnToEnResult,
 } from '../services/wordParser.js';
+import { translateText } from '../services/translateService.js';
 import type { TestMode } from '../types.js';
 
 const router = Router();
@@ -43,6 +45,14 @@ router.get('/stats', (req, res) => {
 
 router.get('/words', (req, res) => {
   res.json(getAllWords(req.userId));
+});
+
+router.get('/words/export', (req, res) => {
+  const csv = exportWordsCsv(req.userId);
+  const filename = `vocabulary-${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(csv);
 });
 
 router.delete('/words/all', (req, res) => {
@@ -143,6 +153,27 @@ router.post('/import/confirm', (req, res) => {
   }
   const result = importWords(req.userId, words);
   res.json(result);
+});
+
+router.post('/translate', async (req, res) => {
+  const { text, direction } = req.body ?? {};
+  if (!text || typeof text !== 'string') {
+    res.status(400).json({ error: '请提供文本' });
+    return;
+  }
+  if (direction !== 'en_to_cn' && direction !== 'cn_to_en') {
+    res.status(400).json({ error: '无效的转换方向' });
+    return;
+  }
+
+  try {
+    const result = await translateText(req.userId, text, direction);
+    res.json(result);
+  } catch (err) {
+    console.error('Translate error:', err);
+    const message = err instanceof Error ? err.message : '翻译失败';
+    res.status(500).json({ error: message });
+  }
 });
 
 router.get('/test/daily', (req, res) => {

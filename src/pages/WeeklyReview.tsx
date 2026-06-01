@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api, type WeeklyReviewWord, RESULT_LABELS } from '../api/client';
+import { api, type WeeklyReviewWord, type ResultType } from '../api/client';
+import { useLocale } from '../components/LocaleProvider';
 import './WeeklyReview.css';
 
 export default function WeeklyReview() {
+  const { t } = useLocale();
   const [words, setWords] = useState<WeeklyReviewWord[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const resultLabel = (type: ResultType) => t(`result.${type}`);
 
   useEffect(() => {
     api
@@ -15,27 +19,25 @@ export default function WeeklyReview() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="empty-state">加载中...</div>;
+  if (loading) return <div className="empty-state">{t('common.loading')}</div>;
 
   return (
     <div className="review-page fade-in">
       <div className="page-header">
-        <h1 className="page-title">每周强化复习</h1>
-        <p className="page-desc">
-          基于过去 7 天的错误记录和遗忘情况，智能生成个性化复习题库
-        </p>
+        <h1 className="page-title">{t('review.title')}</h1>
+        <p className="page-desc">{t('review.desc')}</p>
       </div>
 
       {words.length === 0 ? (
         <div className="empty-state card">
-          <p>暂无需要复习的单词</p>
-          <p>继续每日测试，系统会根据你的错误自动推荐复习内容</p>
+          <p>{t('review.empty')}</p>
+          <p>{t('review.emptyHint')}</p>
         </div>
       ) : (
         <>
           <div className="review-action">
             <Link to="/test?type=review" className="btn btn-primary btn-lg">
-              开始强化复习 ({words.length} 词)
+              {t('review.startReview', { count: words.length })}
             </Link>
           </div>
 
@@ -48,23 +50,23 @@ export default function WeeklyReview() {
                     <span className="review-cn">{rw.word.chinese}</span>
                   </div>
                   <div className="priority-badge">
-                    优先级 {Math.round(rw.priority)}
+                    {t('review.priority', { score: Math.round(rw.priority) })}
                   </div>
                 </div>
                 <div className="review-stats">
-                  <span>7日错误 {rw.errorCount7d} 次</span>
-                  <span>不会 {rw.unknownCount7d} 次</span>
+                  <span>{t('review.errors7d', { count: rw.errorCount7d })}</span>
+                  <span>{t('review.unknown7d', { count: rw.unknownCount7d })}</span>
                   {rw.daysSinceLastCorrect !== null && rw.daysSinceLastCorrect < 999 && (
-                    <span>{rw.daysSinceLastCorrect} 天未答对</span>
+                    <span>
+                      {t('review.daysSinceCorrect', { days: rw.daysSinceLastCorrect })}
+                    </span>
                   )}
-                  {rw.daysSinceLastCorrect === 999 && (
-                    <span>从未答对</span>
-                  )}
+                  {rw.daysSinceLastCorrect === 999 && <span>{t('review.neverCorrect')}</span>}
                 </div>
                 <div className="recent-errors">
                   {rw.recentErrors.map((e, i) => (
                     <span key={i} className="badge badge-muted">
-                      {RESULT_LABELS[e]}
+                      {resultLabel(e)}
                     </span>
                   ))}
                 </div>
