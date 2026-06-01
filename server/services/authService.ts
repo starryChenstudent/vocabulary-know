@@ -22,8 +22,12 @@ export class AuthError extends Error {
   }
 }
 
+const MAX_USERS = 5;
+
 export function isRegistrationAllowed(): boolean {
-  return process.env.ALLOW_REGISTRATION !== 'false';
+  if (process.env.ALLOW_REGISTRATION === 'false') return false;
+  const count = db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number };
+  return count.c < MAX_USERS;
 }
 
 export function getSessionCookieName(): string {
