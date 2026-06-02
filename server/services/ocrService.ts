@@ -1,4 +1,5 @@
 import Tesseract from 'tesseract.js';
+import fs from 'fs';
 import { parseWordsFromText } from './wordParser.js';
 import { preprocessForOcr, createPreviewDataUrl, isHeicFile } from './imagePreprocessor.js';
 import {
@@ -98,6 +99,12 @@ export async function ocrAndParseImage(
       : 'image/jpeg'
   };base64,${imageBuffer.toString('base64')}`;
   const engine = resolveEngine();
+  const debugLog = (msg: string) => {
+    const msgLine = `[OCR DEBUG] ${new Date().toISOString()} ${msg}`;
+    console.log(msgLine);
+    fs.appendFileSync('/tmp/ocr-debug.log', msgLine + '\n');
+  };
+  debugLog(`Engine resolved to: ${engine}`);
 
   let text = '';
   let parsed: ParsedWord[] = [];
@@ -108,6 +115,8 @@ export async function ocrAndParseImage(
     engine === 'dashscope' ||
     engine === 'openai' ||
     (engine === 'auto' && isVisionOcrAvailable());
+  
+  debugLog(`Will try Vision OCR: ${tryVision}`);
 
   if (tryVision) {
     try {
@@ -125,6 +134,9 @@ export async function ocrAndParseImage(
           '英文单词识别不完整，请在预览中手动补全英文，或重新上传图片再试。';
       }
     } catch (err) {
+      const errLog = `[OCR ERROR] ${new Date().toISOString()} Vision OCR failed: ${JSON.stringify(err)}\n`;
+      fs.appendFileSync('/tmp/ocr-debug.log', errLog);
+      console.error('Vision OCR failed (fallback to Tesseract):', err);
       if (engine === 'dashscope' || engine === 'openai') throw err;
     }
   }

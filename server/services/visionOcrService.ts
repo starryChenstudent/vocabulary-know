@@ -144,7 +144,7 @@ async function callVisionModel(
   ];
 
   if (provider === 'dashscope') {
-    userContent[0].min_pixels = 3072;
+    userContent[0].min_pixels = 4096;
     userContent[0].max_pixels = 8388608;
   }
 
