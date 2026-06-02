@@ -12,6 +12,7 @@ import WeeklyReview from './pages/WeeklyReview';
 import WordList from './pages/WordList';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
+import ApiSettings from './pages/ApiSettings';
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
@@ -44,6 +45,7 @@ function ProtectedApp() {
         <Route path="/error-book" element={<ErrorBook />} />
         <Route path="/review" element={<WeeklyReview />} />
         <Route path="/words" element={<WordList />} />
+        <Route path="/settings/api" element={<ApiSettings />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -29,6 +29,12 @@ import {
   classifyCnToEnResult,
 } from '../services/wordParser.js';
 import { translateText } from '../services/translateService.js';
+import {
+  getAiSettings,
+  updateAiSettings,
+  testAiConnection,
+  getProviderModels,
+} from '../services/aiConfigService.js';
 import type { TestMode } from '../types.js';
 
 const router = Router();
@@ -132,6 +138,7 @@ router.post('/import/image', upload.single('image'), async (req, res) => {
   }
   try {
     const ocrResult = await ocrAndParseImage(
+      req.userId,
       req.file.buffer,
       req.file.mimetype,
       req.file.originalname
@@ -153,6 +160,50 @@ router.post('/import/confirm', (req, res) => {
   }
   const result = importWords(req.userId, words);
   res.json(result);
+});
+
+router.get('/ai-settings', (req, res) => {
+  res.json(getAiSettings(req.userId));
+});
+
+router.put('/ai-settings', (req, res) => {
+  try {
+    res.json(updateAiSettings(req.userId, req.body ?? {}));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '保存失败';
+    res.status(400).json({ error: message });
+  }
+});
+
+router.post('/ai-settings/test', async (req, res) => {
+  try {
+    const result = await testAiConnection(req.userId, req.body ?? {});
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '测试失败';
+    res.status(500).json({ ok: false, message });
+  }
+});
+
+router.post('/ai-settings/models', async (req, res) => {
+  try {
+    const { preset, baseUrl, apiKey } = req.body ?? {};
+    if (
+      preset !== 'dashscope' &&
+      preset !== 'deepseek' &&
+      preset !== 'openai' &&
+      preset !== 'moonshot' &&
+      preset !== 'custom'
+    ) {
+      res.status(400).json({ error: '无效的提供商' });
+      return;
+    }
+    const result = await getProviderModels(req.userId, { preset, baseUrl, apiKey });
+    res.json(result);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '获取模型列表失败';
+    res.status(500).json({ error: message });
+  }
 });
 
 router.post('/translate', async (req, res) => {

@@ -7,8 +7,12 @@ export interface User {
 
 export interface AdminStats {
   userCount: number;
-  totalWords: number;
   adminCount: number;
+  testsToday: number;
+  activeUsers7d: number;
+  registrationEnabled: boolean;
+  registrationLockedByEnv: boolean;
+  registrationAllowed: boolean;
 }
 
 export interface AdminUserRow {
@@ -17,6 +21,75 @@ export interface AdminUserRow {
   created_at: string;
   is_admin: boolean;
   word_count: number;
+  tests_today: number;
+  tests_7d: number;
+  last_test_date: string | null;
+}
+
+export type AiProvider = 'dashscope' | 'openai_compatible';
+export type AiProviderPreset = 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'custom';
+export type OcrEngineMode = 'auto' | 'vision' | 'tesseract' | 'dashscope' | 'openai';
+export type AiConfigSource = 'user' | 'none';
+
+export interface ConfiguredProviderSummary {
+  preset: AiProviderPreset;
+  provider: AiProvider;
+  baseUrl: string;
+  apiKeyMasked: string;
+  textModel: string;
+  visionModel: string;
+  structureModel: string;
+}
+
+export interface AiSettings {
+  provider: AiProvider;
+  preset: AiProviderPreset;
+  baseUrl: string;
+  visionModel: string;
+  textModel: string;
+  structureModel: string;
+  ocrEngine: OcrEngineMode;
+  apiKeyMasked: string;
+  apiKeySet: boolean;
+  source: AiConfigSource;
+  visionAvailable: boolean;
+  translateAvailable: boolean;
+  configuredProviders: ConfiguredProviderSummary[];
+}
+
+export interface AiSettingsUpdate {
+  provider?: AiProvider;
+  preset?: AiProviderPreset;
+  apiKey?: string;
+  baseUrl?: string;
+  visionModel?: string;
+  textModel?: string;
+  structureModel?: string;
+  ocrEngine?: OcrEngineMode;
+  clearApiKey?: boolean;
+}
+
+export type ModelCapability = 'ocr' | 'multimodal' | 'text';
+export type ModelSource = 'builtin' | 'api';
+
+export interface ProviderModelEntry {
+  id: string;
+  capability: ModelCapability;
+  source: ModelSource;
+}
+
+export interface ProviderModelsResult {
+  preset: AiProviderPreset;
+  visionSupported: boolean;
+  visionModels: ProviderModelEntry[];
+  textModels: ProviderModelEntry[];
+  fetchedFromApi: boolean;
+}
+
+export interface ProviderModelsInput {
+  preset: AiProviderPreset;
+  baseUrl?: string;
+  apiKey?: string;
 }
 
 export type TestMode = 'en_to_cn' | 'cn_to_en';
@@ -76,13 +149,18 @@ export interface StatsOverview {
   streakDays: number;
 }
 
+export interface OcrUsageInfo {
+  preset: AiProviderPreset | 'tesseract';
+  model: string;
+  totalTokens: number;
+}
+
 export interface ImportResult {
   imported: number;
   duplicates: number;
   parsed: { english: string; chinese: string }[];
-  rawText?: string;
   previewDataUrl?: string;
-  ocrEngine?: 'dashscope' | 'openai' | 'tesseract';
+  ocrUsage?: OcrUsageInfo;
   handwritingHint?: string;
 }
 
@@ -259,6 +337,16 @@ export const api = {
 
   getAdminStats: () => request<AdminStats>('/admin/stats'),
   getAdminUsers: () => request<AdminUserRow[]>('/admin/users'),
+  setRegistrationEnabled: (enabled: boolean) =>
+    request<AdminStats>('/admin/settings/registration', {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
+  setUserAdmin: (userId: number, isAdmin: boolean) =>
+    request<{ success: boolean }>(`/admin/users/${userId}/admin`, {
+      method: 'PUT',
+      body: JSON.stringify({ is_admin: isAdmin }),
+    }),
   resetUserPassword: (userId: number, password: string) =>
     request<{ success: boolean }>(`/admin/users/${userId}/password`, {
       method: 'PUT',
@@ -266,6 +354,19 @@ export const api = {
     }),
   deleteUser: (userId: number) =>
     request<{ success: boolean }>(`/admin/users/${userId}`, { method: 'DELETE' }),
+  getAiSettings: () => request<AiSettings>('/ai-settings'),
+  updateAiSettings: (body: AiSettingsUpdate) =>
+    request<AiSettings>('/ai-settings', { method: 'PUT', body: JSON.stringify(body) }),
+  testAiConnection: (body: AiSettingsUpdate) =>
+    request<{ ok: boolean; message: string }>('/ai-settings/test', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  getProviderModels: (body: ProviderModelsInput) =>
+    request<ProviderModelsResult>('/ai-settings/models', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };
 
 export const RESULT_LABELS: Record<ResultType, string> = {

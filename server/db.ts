@@ -82,6 +82,60 @@ function migrateUsersAdmin(db: Database.Database): void {
   db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0');
 }
 
+function migrateAiProviderConfigs(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_ai_provider_configs (
+      user_id INTEGER NOT NULL,
+      preset TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      api_key TEXT NOT NULL DEFAULT '',
+      base_url TEXT NOT NULL DEFAULT '',
+      vision_model TEXT NOT NULL DEFAULT '',
+      text_model TEXT NOT NULL DEFAULT '',
+      structure_model TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      PRIMARY KEY (user_id, preset),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `);
+
+  const legacyRows = db
+    .prepare(
+      `SELECT user_id, provider, preset, api_key, base_url, vision_model, text_model, structure_model
+       FROM user_ai_settings
+       WHERE trim(api_key) != ''`
+    )
+    .all() as Array<{
+    user_id: number;
+    provider: string;
+    preset: string;
+    api_key: string;
+    base_url: string;
+    vision_model: string;
+    text_model: string;
+    structure_model: string;
+  }>;
+
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO user_ai_provider_configs (
+       user_id, preset, provider, api_key, base_url, vision_model, text_model, structure_model
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  for (const row of legacyRows) {
+    insert.run(
+      row.user_id,
+      row.preset,
+      row.provider,
+      row.api_key,
+      row.base_url,
+      row.vision_model,
+      row.text_model,
+      row.structure_model
+    );
+  }
+}
+
 const dbPath = resolveDbPath();
 const dataDir = path.dirname(dbPath);
 if (!fs.existsSync(dataDir)) {
@@ -133,11 +187,32 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_test_records_date ON test_records(test_date);
   CREATE INDEX IF NOT EXISTS idx_test_records_word ON test_records(word_id);
   CREATE INDEX IF NOT EXISTS idx_test_records_result ON test_records(result_type);
+
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+  );
+
+  CREATE TABLE IF NOT EXISTS user_ai_settings (
+    user_id INTEGER PRIMARY KEY,
+    provider TEXT NOT NULL DEFAULT 'dashscope',
+    preset TEXT NOT NULL DEFAULT 'dashscope',
+    api_key TEXT NOT NULL DEFAULT '',
+    base_url TEXT NOT NULL DEFAULT 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    vision_model TEXT NOT NULL DEFAULT 'qwen-vl-plus',
+    text_model TEXT NOT NULL DEFAULT 'qwen-turbo',
+    structure_model TEXT NOT NULL DEFAULT 'qwen-vl-plus',
+    ocr_engine TEXT NOT NULL DEFAULT 'auto',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
 `);
 
   migrateWordsForMultiUser(db);
   ensureWordsCreatedAtDefault(db);
   migrateUsersAdmin(db);
+  migrateAiProviderConfigs(db);
 
 export default db;
 

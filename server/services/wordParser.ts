@@ -38,6 +38,7 @@ function cleanChinese(text: string): string {
   return text
     .replace(/^\d+[\.\)、]\s*/, '')
     .replace(POS_PREFIX, '')
+    .replace(/\s+(?:n|v|a|adj|adv|vt|vi|prep|conj|pron)\.\s*/gi, '；')
     .replace(/[.。,，;；!！?？]+$/g, '')
     .trim();
 }

@@ -1,0 +1,70 @@
+.pronounce-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+}
+
+.pronounce-btn {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-card);
+  color: var(--accent);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.pronounce-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: rgba(15, 118, 110, 0.25);
+}
+
+.pronounce-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.pronounce-btn--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.pronounce-btn--sm svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pronounce-btn--md {
+  width: 40px;
+  height: 40px;
+}
+
+.pronounce-btn--md svg {
+  width: 20px;
+  height: 20px;
+}
+
+.pronounce-btn--loading svg {
+  animation: pronounce-pulse 0.8s ease-in-out infinite;
+}
+
+.pronounce-error {
+  font-size: 0.72rem;
+  color: var(--error);
+  max-width: 120px;
+  text-align: center;
+  line-height: 1.3;
+}
+
+@keyframes pronounce-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}

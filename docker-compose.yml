@@ -10,6 +10,5 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DB_PATH=/app/data/vocabulary.db
-      - OCR_ENGINE=auto
     env_file:
       - .env

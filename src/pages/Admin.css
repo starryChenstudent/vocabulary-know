@@ -1,11 +1,95 @@
 .admin-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--section-gap);
 }
 
 .admin-stats {
   margin-bottom: 0;
+}
+
+.admin-registration-card {
+  padding: 14px 16px;
+}
+
+.admin-registration-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-registration-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.admin-registration-desc,
+.admin-registration-locked,
+.admin-registration-saving {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.admin-registration-locked {
+  margin-top: 8px;
+  color: var(--warning, #b45309);
+}
+
+.admin-registration-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.admin-toggle {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 28px;
+}
+
+.admin-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.admin-toggle-slider {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  background: var(--border);
+  border-radius: 999px;
+  transition: background 0.2s;
+}
+
+.admin-toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.admin-toggle input:checked + .admin-toggle-slider {
+  background: var(--success);
+}
+
+.admin-toggle input:checked + .admin-toggle-slider::before {
+  transform: translateX(20px);
+}
+
+.admin-toggle input:disabled + .admin-toggle-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .stat-item--purple .stat-value {
@@ -22,14 +106,14 @@
 
 .admin-table-card {
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .admin-table-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20px 24px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -40,17 +124,19 @@
 
 .admin-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .admin-table {
   width: 100%;
+  min-width: 880px;
   border-collapse: collapse;
   font-size: 0.92rem;
 }
 
 .admin-table th,
 .admin-table td {
-  padding: 14px 20px;
+  padding: 10px 14px;
   text-align: left;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
@@ -79,7 +165,7 @@
 .admin-empty {
   text-align: center;
   color: var(--text-muted);
-  padding: 40px !important;
+  padding: 24px !important;
 }
 
 .admin-actions {
@@ -98,13 +184,13 @@
   background: rgba(20, 18, 16, 0.45);
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 16px;
   z-index: 200;
 }
 
 .admin-modal {
   width: min(100%, 420px);
-  padding: 24px;
+  padding: 18px;
 }
 
 .admin-modal h3 {
@@ -131,13 +217,103 @@
   gap: 10px;
 }
 
-@media (max-width: 768px) {
-  .admin-table th,
+@media (max-width: 900px) {
+  .admin-registration-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-table {
+    min-width: 0;
+    display: block;
+  }
+
+  .admin-table-wrap {
+    overflow-x: visible;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .admin-table tbody tr {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 4px 14px 12px;
+    background: var(--bg-card);
+  }
+
+  .admin-table tbody tr:hover {
+    background: var(--bg-hover);
+  }
+
   .admin-table td {
-    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    white-space: normal;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .admin-table tbody tr td:last-child {
+    border-bottom: none;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .admin-table td.admin-empty {
+    display: block;
+    border-bottom: none;
+    text-align: center;
+  }
+
+  .admin-table td.admin-empty::before {
+    display: none;
+  }
+
+  .admin-table td.admin-actions-cell {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .admin-table td.admin-actions-cell::before {
+    align-self: flex-start;
   }
 
   .admin-actions {
     flex-direction: column;
+    width: 100%;
+  }
+
+  .admin-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-table th,
+  .admin-table td {
+    padding: 10px 0;
   }
 }

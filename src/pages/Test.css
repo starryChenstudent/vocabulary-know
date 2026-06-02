@@ -1,14 +1,40 @@
+.test-type-tabs {
+  margin-bottom: 18px;
+}
+
 .test-result-stats {
-  margin: 24px 0;
+  margin: 16px 0;
+}
+
+.test-result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.test-result-actions--dual .btn {
+  width: 100%;
+}
+
+@media (min-width: 480px) {
+  .test-result-actions--dual {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .test-result-actions--dual .btn {
+    flex: 1;
+    max-width: 220px;
+  }
 }
 
 .test-start-card {
   text-align: center;
-  padding: 52px 28px;
+  padding: 32px 20px;
 }
 
 .test-info {
-  margin-bottom: 28px;
+  margin-bottom: 16px;
 }
 
 .test-info strong {
@@ -57,6 +83,65 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.test-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.test-exit-btn {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  font-size: 0.875rem;
+}
+
+.test-exit-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 16, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 200;
+}
+
+.test-exit-modal {
+  width: min(100%, 400px);
+  padding: 18px;
+}
+
+.test-exit-modal h3 {
+  font-size: 1.15rem;
+  margin-bottom: 8px;
+}
+
+.test-exit-modal__desc {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.test-exit-modal__actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+}
+
+@media (min-width: 480px) {
+  .test-exit-modal__actions {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .test-exit-modal__actions .btn {
+    min-width: 120px;
+  }
 }
 
 .test-timer {
@@ -75,7 +160,7 @@
 
 .test-card {
   text-align: center;
-  padding: 48px 28px;
+  padding: 28px 20px;
   background:
     linear-gradient(180deg, rgba(15, 118, 110, 0.04), transparent),
     var(--bg-card);
@@ -83,6 +168,14 @@
 
 .test-prompt {
   margin-bottom: 10px;
+}
+
+.test-prompt-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .prompt-en {
@@ -101,13 +194,13 @@
 .test-hint {
   color: var(--text-muted);
   font-size: 0.875rem;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .test-input {
   text-align: center;
   font-size: 1.125rem;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 
 .test-actions {
@@ -141,7 +234,7 @@
 
 .test-result-card {
   text-align: center;
-  padding: 48px 28px;
+  padding: 28px 20px;
 }
 
 .test-result-card h2 {

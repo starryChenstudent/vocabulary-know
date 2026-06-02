@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type Word } from '../api/client';
+import PronounceButton from '../components/PronounceButton';
 import { useLocale } from '../components/LocaleProvider';
 import './WordList.css';
+
+type DeleteDialog =
+  | { type: 'one'; word: Word }
+  | { type: 'selected'; count: number; ids: number[] }
+  | { type: 'all'; count: number };
 
 export default function WordList() {
   const { t } = useLocale();
@@ -14,6 +20,7 @@ export default function WordList() {
   const [editEn, setEditEn] = useState('');
   const [editCn, setEditCn] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialog | null>(null);
 
   const loadWords = () => {
     api
@@ -66,43 +73,50 @@ export default function WordList() {
     });
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm(t('words.confirmDeleteOne'))) return;
-    await api.deleteWord(id);
-    setWords((prev) => prev.filter((w) => w.id !== id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
+  const handleDelete = (word: Word) => {
+    setDeleteDialog({ type: 'one', word });
   };
 
-  const handleDeleteSelected = async () => {
+  const handleDeleteSelected = () => {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
-    if (!confirm(t('words.confirmDeleteSelected', { count: ids.length }))) return;
-
-    setDeleting(true);
-    try {
-      await api.deleteWords(ids);
-      setWords((prev) => prev.filter((w) => !selectedIds.has(w.id)));
-      setSelectedIds(new Set());
-    } catch (err) {
-      alert(err instanceof Error ? err.message : t('words.deleteFailed'));
-    } finally {
-      setDeleting(false);
-    }
+    setDeleteDialog({ type: 'selected', count: ids.length, ids });
   };
 
-  const handleDeleteAll = async () => {
+  const handleDeleteAll = () => {
     if (words.length === 0) return;
-    if (!confirm(t('words.confirmDeleteAll', { count: words.length }))) return;
+    setDeleteDialog({ type: 'all', count: words.length });
+  };
+
+  const closeDeleteDialog = () => {
+    if (deleting) return;
+    setDeleteDialog(null);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDialog) return;
 
     setDeleting(true);
     try {
-      await api.deleteAllWords();
-      setWords([]);
-      setSelectedIds(new Set());
+      if (deleteDialog.type === 'one') {
+        await api.deleteWord(deleteDialog.word.id);
+        setWords((prev) => prev.filter((w) => w.id !== deleteDialog.word.id));
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(deleteDialog.word.id);
+          return next;
+        });
+      } else if (deleteDialog.type === 'selected') {
+        await api.deleteWords(deleteDialog.ids);
+        const idSet = new Set(deleteDialog.ids);
+        setWords((prev) => prev.filter((w) => !idSet.has(w.id)));
+        setSelectedIds(new Set());
+      } else {
+        await api.deleteAllWords();
+        setWords([]);
+        setSelectedIds(new Set());
+      }
+      setDeleteDialog(null);
     } catch (err) {
       alert(err instanceof Error ? err.message : t('words.deleteFailed'));
     } finally {
@@ -239,7 +253,10 @@ export default function WordList() {
                       onChange={() => toggleSelect(word.id)}
                     />
                   </label>
-                  <span className="mono word-en">{word.english}</span>
+                  <div className="word-en-cell">
+                    <span className="mono word-en">{word.english}</span>
+                    <PronounceButton word={word.english} size="sm" />
+                  </div>
                   <span className="word-cn">{word.chinese}</span>
                   <div className="word-actions">
                     <button
@@ -252,7 +269,7 @@ export default function WordList() {
                     <button
                       className="btn btn-danger"
                       style={{ padding: '6px 12px', fontSize: '0.8125rem' }}
-                      onClick={() => handleDelete(word.id)}
+                      onClick={() => handleDelete(word)}
                     >
                       {t('common.delete')}
                     </button>
@@ -261,6 +278,65 @@ export default function WordList() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {deleteDialog && (
+        <div className="word-delete-backdrop" onClick={closeDeleteDialog}>
+          <div
+            className="word-delete-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="word-delete-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="word-delete-modal__icon" aria-hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M10 11v6M14 11v6M6 7l1 14h10l1-14" />
+              </svg>
+            </div>
+            <h3 id="word-delete-title" className="word-delete-modal__title">
+              {deleteDialog.type === 'one' && t('words.deleteTitleOne')}
+              {deleteDialog.type === 'selected' && t('words.deleteTitleSelected')}
+              {deleteDialog.type === 'all' && t('words.deleteTitleAll')}
+            </h3>
+            <p className="word-delete-modal__desc">
+              {deleteDialog.type === 'one' &&
+                t('words.deleteDescOne', {
+                  english: deleteDialog.word.english,
+                  chinese: deleteDialog.word.chinese,
+                })}
+              {deleteDialog.type === 'selected' &&
+                t('words.deleteDescSelected', { count: deleteDialog.count })}
+              {deleteDialog.type === 'all' &&
+                t('words.deleteDescAll', { count: deleteDialog.count })}
+            </p>
+            {deleteDialog.type === 'one' && (
+              <div className="word-delete-modal__preview card">
+                <span className="mono word-delete-modal__en">{deleteDialog.word.english}</span>
+                <span className="word-delete-modal__cn">{deleteDialog.word.chinese}</span>
+              </div>
+            )}
+            <p className="word-delete-modal__warn">{t('words.deleteWarn')}</p>
+            <div className="word-delete-modal__actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={closeDeleteDialog}
+                disabled={deleting}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={confirmDelete}
+                disabled={deleting}
+              >
+                {deleting ? t('words.deleting') : t('words.confirmDelete')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -225,13 +225,41 @@ export default function Import() {
 
   const isSaved = (result?.imported ?? 0) > 0;
 
-  const engineLabel = (engine: string) => {
-    if (engine === 'dashscope') return t('import.engineDashscope');
-    if (engine === 'openai') return t('import.engineOpenai');
-    return t('import.engineTesseract');
+  const formatOcrUsage = (usage: NonNullable<ImportResult['ocrUsage']>) => {
+    const platform =
+      usage.preset === 'tesseract'
+        ? t('adminAi.providers.tesseract')
+        : t(`adminAi.providers.${usage.preset}`);
+    const tokens =
+      usage.totalTokens > 0
+        ? t('import.engineTokens', { count: usage.totalTokens.toLocaleString() })
+        : t('import.engineTokensLocal');
+    return `${platform} · ${usage.model} · ${tokens}`;
   };
 
   const validCount = editableWords.filter((w) => w.english && w.chinese).length;
+
+  const showImageOcrActions =
+    tab === 'image' && (preview || previewLoading || loading || result);
+
+  const imageOcrButtons = showImageOcrActions ? (
+    <>
+      <button
+        type="button"
+        className={`btn ${loading ? 'btn-danger' : 'btn-primary'}`}
+        onClick={handleReRecognize}
+      >
+        {loading ? t('import.cancelOcr') : t('import.retryOcr')}
+      </button>
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={() => handleReupload()}
+      >
+        {t('import.reupload')}
+      </button>
+    </>
+  ) : null;
 
   return (
     <div className="import-page fade-in">
@@ -288,6 +316,10 @@ export default function Import() {
               </>
             )}
           </div>
+
+          {showImageOcrActions && !result && (
+            <div className="import-ocr-bar">{imageOcrButtons}</div>
+          )}
         </>
       )}
 
@@ -327,16 +359,32 @@ export default function Import() {
             <div className="hint-msg">{result.handwritingHint}</div>
           )}
 
-          {result.ocrEngine && (
-            <div className="result-meta">
-              {t('import.engine')}：
-              <span className="badge badge-purple">{engineLabel(result.ocrEngine)}</span>
-            </div>
+          {showImageOcrActions && (
+            <div className="import-ocr-bar import-ocr-bar--in-card">{imageOcrButtons}</div>
           )}
 
-          {isSaved ? (
+          {!isSaved ? (
+            <div className="result-summary">
+              {result.ocrUsage && (
+                <span className="result-summary__engine">
+                  {t('import.engine')}：
+                  <span className="badge badge-purple">{formatOcrUsage(result.ocrUsage)}</span>
+                </span>
+              )}
+              <span className="badge badge-purple">
+                {t('import.parsed', { count: editableWords.length })}
+              </span>
+              <span className="badge badge-muted">{t('import.reviewHint')}</span>
+            </div>
+          ) : (
             <>
               <div className="result-summary">
+                {result.ocrUsage && (
+                  <span className="result-summary__engine">
+                    {t('import.engine')}：
+                    <span className="badge badge-purple">{formatOcrUsage(result.ocrUsage)}</span>
+                  </span>
+                )}
                 <span className="badge badge-success">
                   {t('import.imported', { count: result.imported })}
                 </span>
@@ -358,13 +406,6 @@ export default function Import() {
                 )}
               </div>
             </>
-          ) : (
-            <div className="result-summary">
-              <span className="badge badge-purple">
-                {t('import.parsed', { count: editableWords.length })}
-              </span>
-              <span className="badge badge-muted">{t('import.reviewHint')}</span>
-            </div>
           )}
 
           {!isSaved && (
@@ -409,7 +450,7 @@ export default function Import() {
                   {t('import.addManual')}
                 </button>
                 <button
-                  className="btn btn-primary"
+                  className="btn btn-primary import-actions__confirm"
                   onClick={handleConfirm}
                   disabled={confirming}
                 >
@@ -421,32 +462,11 @@ export default function Import() {
             </>
           )}
 
-          {result.rawText && (
-            <details className="raw-text" open={editableWords.length === 0}>
-              <summary>{t('import.rawText')}</summary>
-              <pre>{result.rawText}</pre>
-            </details>
-          )}
         </div>
       )}
 
-      {tab === 'image' && (preview || previewLoading || loading || result) && (
-        <div className="import-float-actions">
-          <button
-            type="button"
-            className={`btn ${loading ? 'btn-danger' : 'btn-primary'} import-float-btn`}
-            onClick={handleReRecognize}
-          >
-            {loading ? t('import.cancelOcr') : t('import.retryOcr')}
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary import-float-btn"
-            onClick={() => handleReupload()}
-          >
-            {t('import.reupload')}
-          </button>
-        </div>
+      {showImageOcrActions && !result && (
+        <div className="import-float-actions">{imageOcrButtons}</div>
       )}
     </div>
   );

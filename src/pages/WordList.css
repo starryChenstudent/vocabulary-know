@@ -120,9 +120,17 @@
   cursor: pointer;
 }
 
+.word-en-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .word-en {
   font-weight: 700;
   color: var(--accent);
+  min-width: 0;
 }
 
 .word-cn {
@@ -167,4 +175,93 @@
     max-width: 100%;
     width: 100%;
   }
+}
+
+/* ── Delete confirm modal ── */
+.word-delete-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 18, 16, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 210;
+}
+
+.word-delete-modal {
+  width: min(100%, 420px);
+  padding: 18px 18px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.word-delete-modal__icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--error-soft);
+  color: var(--error);
+  display: grid;
+  place-items: center;
+  margin-bottom: 16px;
+}
+
+.word-delete-modal__icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.word-delete-modal__title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.word-delete-modal__desc {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+
+.word-delete-modal__preview {
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  box-shadow: none;
+}
+
+.word-delete-modal__en {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.word-delete-modal__cn {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.word-delete-modal__warn {
+  width: 100%;
+  font-size: 0.82rem;
+  color: var(--warning);
+  line-height: 1.45;
+  margin-bottom: 20px;
+}
+
+.word-delete-modal__actions {
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
 }

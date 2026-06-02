@@ -1,83 +1,74 @@
 import type { ParsedWord } from '../types.js';
 import { parseWordsFromText } from './wordParser.js';
 import { scoreParsedWords } from './wordExtractor.js';
+import {
+  getVisionConfig,
+  getVisionRuntimeProvider,
+  getActiveProviderPreset,
+  isVisionOcrAvailable,
+  type AiProviderPreset,
+  type VisionRuntimeProvider,
+} from './aiConfigService.js';
 
-export type VisionProvider = 'dashscope' | 'openai';
+export type VisionProvider = VisionRuntimeProvider;
 
 const POS_ONLY_LINE = /^(?:n|v|a|adj|adv|vt|vi)\.\s*[\u4e00-\u9fff]/i;
 const ENGLISH_WORD = /\b[a-z][a-z\-']{1,23}\b/i;
 
 const VOCAB_PROMPT =
-  '这是一张英语单词学习笔记图片。每行只有「英文单词 + 中文释义」，例如：apple 苹果、foreigner 外国人。' +
-  '不要输出词性（n. v. a. 等），不要编号，不要 markdown，不要编造。' +
-  '逐行输出，格式：english 中文';
+  '请识别图片中的词汇/笔记内容，按阅读顺序逐行输出可见文字。' +
+  '常见格式如「英文单词 词性. 中文释义」（例：foreigner n. 外国人），若原文含词性缩写（n. v. a. 等）请保留。' +
+  '忠实还原原文，保留原有分隔方式；不要自行添加编号、markdown 或编造；看不清处用 ? 占位。';
 
 const STRUCTURE_PROMPT =
-  '这是英语单词表图片。每行只有英文单词和中文释义，不含词性。' +
-  '提取 english 和 chinese，多个中文释义用顿号连接。' +
-  '不要词性，不要编号，不要编造。' +
-  '严格只输出 JSON 数组，不要 markdown，不要解释：' +
-  '[{"english":"apple","chinese":"苹果"},{"english":"foreigner","chinese":"外国人"}]';
+  '请从图片中提取词汇条目。常见为「英文单词 + 词性 + 中文释义」，词性仅作参考。' +
+  '输出时 english 只填单词，chinese 只填释义（去掉 n./v./a. 等词性标记，多个释义用逗号或分号连接）。' +
+  '不要编号或编造。严格只输出 JSON 数组，不要 markdown 或解释：' +
+  '[{"english":"...","chinese":"..."}]';
 
-interface VisionConfig {
-  provider: VisionProvider;
-  apiKey: string;
-  baseUrl: string;
-  model: string;
+function normalizeEnglishEntry(word: string): string {
+  return word.trim().toLowerCase();
 }
 
-function resolveVisionConfig(): VisionConfig | null {
-  if (process.env.DASHSCOPE_API_KEY) {
-    return {
-      provider: 'dashscope',
-      apiKey: process.env.DASHSCOPE_API_KEY,
-      baseUrl:
-        process.env.DASHSCOPE_BASE_URL ||
-        'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      model: process.env.DASHSCOPE_VISION_MODEL || 'qwen-vl-plus',
-    };
-  }
-
-  if (process.env.OPENAI_API_KEY) {
-    return {
-      provider: 'openai',
-      apiKey: process.env.OPENAI_API_KEY,
-      baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-      model: process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini',
-    };
-  }
-
-  return null;
-}
-
-function resolveStructureModel(provider: VisionProvider): string {
-  if (provider === 'dashscope') {
-    return process.env.DASHSCOPE_STRUCTURE_MODEL || 'qwen-vl-plus';
-  }
-  return process.env.OPENAI_VISION_MODEL || 'gpt-4o-mini';
-}
-
-function isValidEnglishWord(word: string): boolean {
-  const normalized = word.trim().toLowerCase();
+function isValidEnglishEntry(word: string): boolean {
+  const normalized = normalizeEnglishEntry(word);
   if (normalized.length < 2) return false;
   if (/^(?:n|v|a|adj|adv|vt|vi|prep|conj|pron)\.?$/i.test(normalized)) return false;
-  return /^[a-z][a-z\-']*$/.test(normalized);
+  return /^[a-z][a-z0-9 \-'']*$/i.test(normalized) && /[a-z]/.test(normalized);
+}
+
+function pickJsonField(item: Record<string, unknown>, keys: string[]): string {
+  for (const key of keys) {
+    const value = item[key];
+    if (value != null && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  return '';
 }
 
 function parseVisionVocabResponse(text: string): ParsedWord[] {
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (jsonMatch) {
     try {
-      const items = JSON.parse(jsonMatch[0]) as Array<{ english?: string; chinese?: string }>;
+      const items = JSON.parse(jsonMatch[0]) as Array<Record<string, unknown>>;
       if (Array.isArray(items)) {
         const results: ParsedWord[] = [];
         const seen = new Set<string>();
         for (const item of items) {
-          const english = String(item.english ?? '')
-            .trim()
-            .toLowerCase();
-          const chinese = String(item.chinese ?? '').trim();
-          if (!isValidEnglishWord(english) || !chinese) continue;
+          const english = normalizeEnglishEntry(
+            pickJsonField(item, ['english', 'word', 'term', 'en', 'foreign', 'src'])
+          );
+          const chinese = pickJsonField(item, [
+            'chinese',
+            'meaning',
+            'definition',
+            'translation',
+            'cn',
+            'target',
+            '释义',
+          ]);
+          if (!isValidEnglishEntry(english) || !chinese) continue;
           if (seen.has(english)) continue;
           seen.add(english);
           results.push({ english, chinese });
@@ -93,6 +84,8 @@ function parseVisionVocabResponse(text: string): ParsedWord[] {
 }
 
 function looksLikePosOnlyResult(text: string, parsed: ParsedWord[]): boolean {
+  if (parsed.length >= 2) return false;
+
   const lines = text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -100,8 +93,8 @@ function looksLikePosOnlyResult(text: string, parsed: ParsedWord[]): boolean {
 
   if (lines.length === 0) return false;
 
-  const validEnglishCount = parsed.filter((word) => isValidEnglishWord(word.english)).length;
-  if (parsed.length > 0 && validEnglishCount >= Math.ceil(parsed.length * 0.6)) {
+  const validEnglishCount = parsed.filter((word) => isValidEnglishEntry(word.english)).length;
+  if (parsed.length > 0 && validEnglishCount >= Math.ceil(parsed.length * 0.5)) {
     return false;
   }
 
@@ -112,41 +105,71 @@ function looksLikePosOnlyResult(text: string, parsed: ParsedWord[]): boolean {
   return posOnlyLines >= Math.max(2, Math.ceil(lines.length * 0.5));
 }
 
-export function isVisionOcrAvailable(): boolean {
-  return resolveVisionConfig() !== null;
+function buildVisionUserMessage(
+  provider: VisionProvider,
+  model: string,
+  mediaType: string,
+  base64: string,
+  prompt: string
+): { role: 'user'; content: Array<Record<string, unknown>> } {
+  const textPart = { type: 'text', text: prompt };
+  const imagePart: Record<string, unknown> = {
+    type: 'image_url',
+    image_url: { url: `data:${mediaType};base64,${base64}` },
+  };
+
+  if (provider === 'dashscope') {
+    imagePart.min_pixels = 3072;
+    imagePart.max_pixels = 8388608;
+  }
+
+  const content =
+    provider === 'dashscope' && /qwen-vl-ocr/i.test(model)
+      ? [imagePart, textPart]
+      : [textPart, imagePart];
+
+  return { role: 'user', content };
 }
 
-export function getVisionProvider(): VisionProvider | null {
-  return resolveVisionConfig()?.provider ?? null;
+function parseApiErrorMessage(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw) as {
+      error?: { message?: string; code?: string };
+      message?: string;
+    };
+    return parsed.error?.message ?? parsed.message ?? raw;
+  } catch {
+    return raw;
+  }
+}
+
+export { isVisionOcrAvailable };
+
+export function getVisionProvider(userId: number): VisionProvider | null {
+  return getVisionRuntimeProvider(userId);
 }
 
 async function callVisionModel(
+  userId: number,
   buffer: Buffer,
   mimeType: string,
   model: string,
   prompt: string,
   provider: VisionProvider
-): Promise<string> {
+): Promise<{ content: string; totalTokens: number }> {
+  if (!buffer.length) {
+    throw new Error('图片为空，无法识别');
+  }
+
   const base64 = buffer.toString('base64');
   const mediaType = mimeType.startsWith('image/') ? mimeType : 'image/jpeg';
-  const config = resolveVisionConfig();
+  const config = getVisionConfig(userId);
   if (!config) {
-    throw new Error('未配置 DASHSCOPE_API_KEY 或 OPENAI_API_KEY');
+    throw new Error('未配置视觉 API Key，请在「模型服务」页面填写你的 API Key');
   }
 
   const url = `${config.baseUrl.replace(/\/$/, '')}/chat/completions`;
-  const userContent: Array<Record<string, unknown>> = [
-    {
-      type: 'image_url',
-      image_url: { url: `data:${mediaType};base64,${base64}` },
-    },
-    { type: 'text', text: prompt },
-  ];
-
-  if (provider === 'dashscope') {
-    userContent[0].min_pixels = 4096;
-    userContent[0].max_pixels = 8388608;
-  }
+  const userMessage = buildVisionUserMessage(provider, model, mediaType, base64, prompt);
 
   const response = await fetch(url, {
     method: 'POST',
@@ -157,37 +180,66 @@ async function callVisionModel(
     body: JSON.stringify({
       model,
       temperature: 0,
-      messages: [{ role: 'user', content: userContent }],
+      messages: [userMessage],
     }),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`Vision OCR 失败: ${err.slice(0, 300)}`);
+    const detail = parseApiErrorMessage(err);
+    throw new Error(`Vision OCR 失败: ${detail.slice(0, 300)}`);
   }
 
   const data = (await response.json()) as {
     choices?: Array<{ message?: { content?: string } }>;
+    usage?: {
+      total_tokens?: number;
+      prompt_tokens?: number;
+      completion_tokens?: number;
+    };
   };
-  return data.choices?.[0]?.message?.content?.trim() ?? '';
+  const usage = data.usage;
+  const totalTokens =
+    usage?.total_tokens ??
+    (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0);
+  return {
+    content: data.choices?.[0]?.message?.content?.trim() ?? '',
+    totalTokens,
+  };
 }
 
 export async function ocrWithVision(
+  userId: number,
   buffer: Buffer,
   mimeType: string
-): Promise<{ text: string; parsed: ParsedWord[]; provider: VisionProvider }> {
-  const config = resolveVisionConfig();
+): Promise<{
+  text: string;
+  parsed: ParsedWord[];
+  provider: VisionProvider;
+  preset: AiProviderPreset;
+  model: string;
+  totalTokens: number;
+}> {
+  const config = getVisionConfig(userId);
   if (!config) {
-    throw new Error('未配置 DASHSCOPE_API_KEY 或 OPENAI_API_KEY');
+    throw new Error('未配置视觉 API Key，请在「模型服务」页面填写你的 API Key');
   }
 
-  let text = await callVisionModel(
+  const provider = config.runtimeProvider;
+  const preset = getActiveProviderPreset(userId);
+  let totalTokens = 0;
+  let modelUsed = config.visionModel;
+
+  const firstPass = await callVisionModel(
+    userId,
     buffer,
     mimeType,
-    config.model,
-    config.provider === 'openai' ? STRUCTURE_PROMPT : VOCAB_PROMPT,
-    config.provider
+    config.visionModel,
+    VOCAB_PROMPT,
+    provider
   );
+  totalTokens += firstPass.totalTokens;
+  let text = firstPass.content;
   let parsed = parseVisionVocabResponse(text);
 
   const shouldRetry =
@@ -195,20 +247,23 @@ export async function ocrWithVision(
     (parsed.length === 0 && text.length > 0);
 
   if (shouldRetry) {
-    const structureModel = resolveStructureModel(config.provider);
-    if (structureModel !== config.model || config.provider === 'openai') {
+    const structureModel = config.structureModel;
+    if (structureModel !== config.visionModel || provider === 'openai') {
       try {
-        const retryText = await callVisionModel(
+        const retryPass = await callVisionModel(
+          userId,
           buffer,
           mimeType,
           structureModel,
           STRUCTURE_PROMPT,
-          config.provider
+          provider
         );
-        const retryParsed = parseVisionVocabResponse(retryText);
+        totalTokens += retryPass.totalTokens;
+        const retryParsed = parseVisionVocabResponse(retryPass.content);
         if (scoreParsedWords(retryParsed) > scoreParsedWords(parsed)) {
-          text = retryText;
+          text = retryPass.content;
           parsed = retryParsed;
+          modelUsed = structureModel;
         }
       } catch {
         // keep first pass result
@@ -216,5 +271,5 @@ export async function ocrWithVision(
     }
   }
 
-  return { text, parsed, provider: config.provider };
+  return { text, parsed, provider, preset, model: modelUsed, totalTokens };
 }

@@ -40,6 +40,15 @@
   --sidebar-width: 188px;
   --sidebar-width-collapsed: 60px;
   --sidebar-current-width: var(--sidebar-width);
+  --container-max: none;
+  --page-pad-x: 12px;
+  --page-pad-y: 10px;
+  --section-gap: 8px;
+  --card-pad: 14px;
+  --page-header-gap: 10px;
+  --stat-gap: 8px;
+  --stat-pad: 10px 12px;
+  --empty-pad-y: 24px;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   font-size: 16px;
   line-height: 1.55;
@@ -135,28 +144,37 @@ textarea {
 }
 
 .container {
-  max-width: 920px;
-  margin: 0 auto;
-  padding: 0 24px;
+  width: 100%;
+  max-width: var(--container-max);
+  margin: 0;
+  padding: 0 var(--page-pad-x);
+}
+
+.main--fluid > .container,
+.container.container--fluid {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 .page-header {
-  margin-bottom: 28px;
+  margin-bottom: var(--page-header-gap);
 }
 
 .page-title {
   font-family: 'Fraunces', Georgia, serif;
-  font-size: clamp(1.75rem, 4vw, 2.25rem);
+  font-size: clamp(1.5rem, 3vw, 1.9rem);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.15;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .page-desc {
   color: var(--text-muted);
-  font-size: 0.975rem;
-  max-width: 560px;
+  font-size: 0.925rem;
+  max-width: none;
 }
 
 .brand-accent {
@@ -170,7 +188,7 @@ textarea {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 24px;
+  padding: var(--card-pad);
   box-shadow: var(--shadow-sm);
 }
 
@@ -290,11 +308,11 @@ textarea {
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  gap: var(--stat-gap);
 }
 
 .stat-item {
-  padding: 18px 16px;
+  padding: var(--stat-pad);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -303,7 +321,7 @@ textarea {
 
 .stat-value {
   font-family: 'Fraunces', Georgia, serif;
-  font-size: 1.85rem;
+  font-size: 1.6rem;
   font-weight: 700;
   line-height: 1.1;
 }
@@ -312,7 +330,7 @@ textarea {
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--text-muted);
-  margin-top: 6px;
+  margin-top: 4px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -351,7 +369,7 @@ textarea {
 
 .empty-state {
   text-align: center;
-  padding: 56px 24px;
+  padding: var(--empty-pad-y) var(--page-pad-x);
   color: var(--text-muted);
 }
 
@@ -401,11 +419,11 @@ textarea {
 
 @media (max-width: 768px) {
   .container {
-    padding: 0 16px;
+    padding: 0 10px;
   }
 
   .card {
-    padding: 18px;
+    padding: 12px;
   }
 
   .stat-grid {

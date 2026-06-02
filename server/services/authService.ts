@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import type { Request } from 'express';
 import db from '../db.js';
+import {
+  isRegistrationEnabledInSettings,
+  isRegistrationLockedByEnv,
+} from './appSettingsService.js';
 
 const SESSION_DAYS = 30;
 const SESSION_COOKIE = 'session';
@@ -25,7 +29,8 @@ export class AuthError extends Error {
 const MAX_USERS = 5;
 
 export function isRegistrationAllowed(): boolean {
-  if (process.env.ALLOW_REGISTRATION === 'false') return false;
+  if (isRegistrationLockedByEnv()) return false;
+  if (!isRegistrationEnabledInSettings()) return false;
   const count = db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number };
   return count.c < MAX_USERS;
 }

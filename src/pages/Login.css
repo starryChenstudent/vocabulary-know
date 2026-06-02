@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  padding: 16px;
   background:
     radial-gradient(circle at top right, rgba(20, 184, 166, 0.12), transparent 40%),
     var(--bg);
@@ -18,19 +18,20 @@
 
 .login-card {
   width: min(100%, 420px);
-  padding: 32px;
+  padding: 24px;
 }
 
 .login-brand {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 28px;
+  gap: 12px;
+  margin-bottom: 18px;
 }
 
 .login-logo {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
   flex-shrink: 0;
 }
 

@@ -1,67 +1,86 @@
 import Tesseract from 'tesseract.js';
 import fs from 'fs';
 import { parseWordsFromText } from './wordParser.js';
-import { preprocessForOcr, createPreviewDataUrl, isHeicFile } from './imagePreprocessor.js';
+import { preprocessForOcr, preprocessForVision, createPreviewDataUrl } from './imagePreprocessor.js';
 import {
   mergeParsedWords,
   parseWordsAggressive,
   scoreParsedWords,
 } from './wordExtractor.js';
 import { ocrWithVision, isVisionOcrAvailable, getVisionProvider } from './visionOcrService.js';
-import type { ImportResult, ParsedWord } from '../types.js';
-
-type OcrEngine = 'dashscope' | 'openai' | 'tesseract';
+import { resolveOcrEngineMode } from './aiConfigService.js';
+import type { ImportResult, OcrUsageInfo, ParsedWord } from '../types.js';
 
 interface OcrPass {
   lang: string;
   psm: string;
 }
 
+const TESSERACT_DEFAULT_LANG = 'eng+chi_sim';
+
+/** Most effective passes first so early exit triggers sooner. */
 const TESSERACT_PASSES: OcrPass[] = [
   { lang: 'eng+chi_sim', psm: '6' },
+  { lang: 'eng+chi_sim', psm: '11' },
   { lang: 'eng+chi_sim', psm: '4' },
   { lang: 'eng', psm: '7' },
   { lang: 'chi_sim', psm: '7' },
-  { lang: 'eng+chi_sim', psm: '11' },
 ];
 
-async function runTesseractPass(buffer: Buffer, pass: OcrPass): Promise<string> {
-  const worker = await Tesseract.createWorker(pass.lang, 1, { logger: () => {} });
-  try {
-    await worker.setParameters({
-      tessedit_pageseg_mode: pass.psm as unknown as Tesseract.PSM,
-      preserve_interword_spaces: '1',
-    });
-    const { data } = await worker.recognize(buffer);
-    return data.text;
-  } finally {
-    await worker.terminate();
-  }
+const EARLY_EXIT_MIN_WORDS = 5;
+const EARLY_EXIT_MIN_SCORE = 520;
+
+async function setWorkerLanguage(
+  worker: Tesseract.Worker,
+  activeLang: { current: string },
+  lang: string
+): Promise<void> {
+  if (activeLang.current === lang) return;
+  await worker.reinitialize(lang, 1);
+  activeLang.current = lang;
 }
 
 async function ocrWithTesseract(buffer: Buffer): Promise<{ text: string; parsed: ParsedWord[] }> {
+  const worker = await Tesseract.createWorker(TESSERACT_DEFAULT_LANG, 1, { logger: () => {} });
+  const activeLang = { current: TESSERACT_DEFAULT_LANG };
   const texts: string[] = [];
   let bestText = '';
   let bestParsed: ParsedWord[] = [];
   let bestScore = -1;
 
-  for (const pass of TESSERACT_PASSES) {
-    try {
-      const text = await runTesseractPass(buffer, pass);
-      texts.push(text);
-      const parsed = mergeParsedWords(
-        parseWordsFromText(text),
-        parseWordsAggressive(text)
-      );
-      const score = scoreParsedWords(parsed);
-      if (score > bestScore) {
-        bestScore = score;
-        bestText = text;
-        bestParsed = parsed;
+  try {
+    await worker.setParameters({
+      preserve_interword_spaces: '1',
+    });
+
+    for (const pass of TESSERACT_PASSES) {
+      try {
+        await setWorkerLanguage(worker, activeLang, pass.lang);
+        await worker.setParameters({
+          tessedit_pageseg_mode: pass.psm as unknown as Tesseract.PSM,
+        });
+
+        const { data } = await worker.recognize(buffer);
+        const text = data.text;
+        texts.push(text);
+
+        const parsed = mergeParsedWords(parseWordsFromText(text), parseWordsAggressive(text));
+        const score = scoreParsedWords(parsed);
+        if (score > bestScore) {
+          bestScore = score;
+          bestText = text;
+          bestParsed = parsed;
+        }
+
+        if (bestParsed.length >= EARLY_EXIT_MIN_WORDS && bestScore >= EARLY_EXIT_MIN_SCORE) {
+          break;
+        }
+      } catch {
+        // try next pass
       }
-    } catch {
-      // try next pass
     }
+  } finally {
+    await worker.terminate();
   }
 
   const mergedParsed = mergeParsedWords(
@@ -78,96 +97,100 @@ async function ocrWithTesseract(buffer: Buffer): Promise<{ text: string; parsed:
   };
 }
 
-function resolveEngine(): OcrEngine | 'auto' {
-  const mode = process.env.OCR_ENGINE || 'auto';
-  if (mode === 'vision' || mode === 'dashscope' || mode === 'openai' || mode === 'tesseract') {
-    if (mode === 'vision') return 'auto';
-    return mode;
-  }
-  return 'auto';
-}
-
 export async function ocrAndParseImage(
+  userId: number,
   buffer: Buffer,
   mimeType?: string,
   filename?: string
-): Promise<ImportResult & { ocrEngine: OcrEngine; handwritingHint?: string }> {
-  const imageBuffer = await preprocessForOcr(buffer, mimeType, filename);
-  const previewDataUrl = `data:${
-    mimeType && !isHeicFile(mimeType, filename) && mimeType.startsWith('image/')
-      ? mimeType
-      : 'image/jpeg'
-  };base64,${imageBuffer.toString('base64')}`;
-  const engine = resolveEngine();
+): Promise<ImportResult & { handwritingHint?: string }> {
+  const previewPromise = createPreviewDataUrl(buffer, mimeType, filename);
+  const mode = resolveOcrEngineMode(userId);
+  const forceTesseract = mode === 'tesseract';
+  const forceVision =
+    mode === 'vision' || mode === 'dashscope' || mode === 'openai';
   const debugLog = (msg: string) => {
     const msgLine = `[OCR DEBUG] ${new Date().toISOString()} ${msg}`;
     console.log(msgLine);
     fs.appendFileSync('/tmp/ocr-debug.log', msgLine + '\n');
   };
-  debugLog(`Engine resolved to: ${engine}`);
+  debugLog(`OCR mode: ${mode}`);
 
   let text = '';
   let parsed: ParsedWord[] = [];
-  let ocrEngine: OcrEngine = 'tesseract';
+  let ocrUsage: OcrUsageInfo | undefined;
   let handwritingHint: string | undefined;
 
   const tryVision =
-    engine === 'dashscope' ||
-    engine === 'openai' ||
-    (engine === 'auto' && isVisionOcrAvailable());
-  
+    !forceTesseract &&
+    (forceVision || (mode === 'auto' && isVisionOcrAvailable(userId)));
+
   debugLog(`Will try Vision OCR: ${tryVision}`);
 
   if (tryVision) {
+    if (!isVisionOcrAvailable(userId)) {
+      throw new Error('未配置 API Key，请在「模型服务」页面填写后使用 AI 识图');
+    }
     try {
-      const vision = await ocrWithVision(imageBuffer, mimeType || 'image/jpeg');
+      const visionImage = await preprocessForVision(buffer, mimeType, filename);
+      const vision = await ocrWithVision(userId, visionImage.buffer, visionImage.mimeType);
       text = vision.text;
       parsed = vision.parsed;
-      ocrEngine = vision.provider;
+      ocrUsage = {
+        preset: vision.preset,
+        model: vision.model,
+        totalTokens: vision.totalTokens,
+      };
 
       if (
         parsed.length > 0 &&
-        parsed.filter((word) => /^[a-z][a-z\-']{1,}$/i.test(word.english)).length <
-          Math.ceil(parsed.length * 0.6)
+        parsed.filter((word) => word.english.trim().length >= 2 && word.chinese.trim()).length <
+          Math.ceil(parsed.length * 0.5)
       ) {
         handwritingHint =
-          '英文单词识别不完整，请在预览中手动补全英文，或重新上传图片再试。';
+          '识别结果可能不完整，请在预览中核对或手动补全后再导入。';
       }
     } catch (err) {
       const errLog = `[OCR ERROR] ${new Date().toISOString()} Vision OCR failed: ${JSON.stringify(err)}\n`;
       fs.appendFileSync('/tmp/ocr-debug.log', errLog);
-      console.error('Vision OCR failed (fallback to Tesseract):', err);
-      if (engine === 'dashscope' || engine === 'openai') throw err;
+      console.error('Vision OCR failed:', err);
+      if (forceVision) throw err;
     }
   }
 
-  if (ocrEngine === 'tesseract') {
-    const tesseract = await ocrWithTesseract(imageBuffer);
+  if (!ocrUsage && !forceVision) {
+    const tesseractBuffer = await preprocessForOcr(buffer, mimeType, filename);
+    const tesseract = await ocrWithTesseract(tesseractBuffer);
     text = tesseract.text;
     parsed = tesseract.parsed;
+    ocrUsage = {
+      preset: 'tesseract',
+      model: 'eng+chi_sim',
+      totalTokens: 0,
+    };
 
-    if (parsed.length === 0 && !isVisionOcrAvailable()) {
+    if (parsed.length === 0 && !isVisionOcrAvailable(userId)) {
       handwritingHint =
-        '手写笔记识别率较低。建议：① 配置 DASHSCOPE_API_KEY 启用百炼 OCR；② 使用打印体或粘贴文本；③ 识别后在下方手动修正再导入。';
-    } else if (parsed.length === 0 && getVisionProvider()) {
-      handwritingHint = 'AI 识别未提取到词条，请查看原始文本或手动修正后导入。';
+        '当前使用本地 Tesseract 识别，手写笔记效果有限。建议：① 在「模型服务」配置 API Key 启用 AI 识图；② 使用打印体或粘贴文本；③ 识别后手动修正再导入。';
+    } else if (parsed.length === 0 && getVisionProvider(userId)) {
+      handwritingHint = 'AI 识别未提取到词条，请手动添加或修正后导入。';
     } else if (
       parsed.length > 0 &&
-      parsed.filter((word) => /^[a-z][a-z\-']{1,}$/i.test(word.english)).length <
-        Math.ceil(parsed.length * 0.6)
+      parsed.filter((word) => word.english.trim().length >= 2 && word.chinese.trim()).length <
+        Math.ceil(parsed.length * 0.5)
     ) {
       handwritingHint =
-        '识别结果可能缺少英文单词。建议：① 将 DASHSCOPE_VISION_MODEL 设为 qwen-vl-plus；② 重新上传或在下方手动补全英文。';
+        '识别结果可能不完整，请在预览中核对或手动补全后再导入。';
     }
   }
+
+  const previewDataUrl = await previewPromise;
 
   return {
     imported: 0,
     duplicates: 0,
     parsed,
-    rawText: text,
     previewDataUrl,
-    ocrEngine,
+    ocrUsage,
     handwritingHint,
   };
 }
@@ -187,6 +210,5 @@ export function parseTextImport(text: string): ImportResult {
     imported: 0,
     duplicates: 0,
     parsed,
-    rawText: text,
   };
 }

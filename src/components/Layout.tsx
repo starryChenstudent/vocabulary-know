@@ -1,38 +1,15 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState, type ReactNode } from 'react';
 import ClockDisplay from './ClockDisplay';
 import ThemeToggle from './ThemeToggle';
 import LocaleToggle from './LocaleToggle';
 import MobileUserMenu from './MobileUserMenu';
+import MobileBottomNav from './MobileBottomNav';
+import AppLogo from './AppLogo';
 import IcpFooter from './IcpFooter';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from './LocaleProvider';
 import './Layout.css';
-
-function LogoMark() {
-  return (
-    <svg className="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect width="32" height="32" rx="10" fill="url(#logo-gradient)" />
-      <path
-        d="M9 10.5C9 9.67 9.67 9 10.5 9H15v14H10.5A1.5 1.5 0 0 1 9 21.5v-11Z"
-        fill="rgba(255,255,255,0.95)"
-      />
-      <path
-        d="M17 9h4.5c.83 0 1.5.67 1.5 1.5v11c0 .83-.67 1.5-1.5 1.5H17V9Z"
-        fill="rgba(255,255,255,0.75)"
-      />
-      <path d="M15 9v14" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" />
-      <circle cx="22.5" cy="11.5" r="2.2" fill="#fff" />
-      <path d="M22.5 14.2v5.3" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-      <defs>
-        <linearGradient id="logo-gradient" x1="4" y1="4" x2="28" y2="28">
-          <stop stopColor="#0f766e" />
-          <stop offset="1" stopColor="#14b8a6" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 const NAV_ROUTES = [
   { to: '/', key: 'home', icon: 'home' as const },
@@ -42,9 +19,16 @@ const NAV_ROUTES = [
   { to: '/error-book', key: 'errorBook', icon: 'error' as const },
   { to: '/review', key: 'review', icon: 'review' as const },
   { to: '/words', key: 'words', icon: 'words' as const },
+  { to: '/settings/api', key: 'apiSettings', icon: 'api' as const },
 ] as const;
 
-type NavIconName = (typeof NAV_ROUTES)[number]['icon'] | 'admin';
+const ADMIN_NAV_ROUTES = [
+  { to: '/admin', key: 'admin', icon: 'admin' as const, end: true as const },
+] as const;
+
+type NavIconName =
+  | (typeof NAV_ROUTES)[number]['icon']
+  | (typeof ADMIN_NAV_ROUTES)[number]['icon'];
 
 function NavIcon({ name }: { name: NavIconName }) {
   switch (name) {
@@ -100,6 +84,14 @@ function NavIcon({ name }: { name: NavIconName }) {
           <path d="M9 12l2 2 4-4" />
         </svg>
       );
+    case 'api':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+          <path d="M8 9h8M8 13h5" />
+          <rect x="3" y="4" width="18" height="16" rx="2" />
+          <path d="M7 20v1M17 20v1" />
+        </svg>
+      );
   }
 }
 
@@ -108,6 +100,9 @@ const STORAGE_KEY = 'vocabulary-iknow-sidebar-collapsed';
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const { t } = useLocale();
+  const { pathname } = useLocation();
+  const fluidPage = pathname === '/settings/api';
+  const homePage = pathname === '/';
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEY) === '1';
@@ -124,15 +119,13 @@ export default function Layout({ children }: { children: ReactNode }) {
     }
   }, [collapsed]);
 
-  const navItems = user?.is_admin
-    ? [...NAV_ROUTES, { to: '/admin', key: 'admin', icon: 'admin' as const }]
-    : [...NAV_ROUTES];
+  const navItems = user?.is_admin ? [...NAV_ROUTES, ...ADMIN_NAV_ROUTES] : [...NAV_ROUTES];
 
   return (
     <div className={`layout ${collapsed ? 'sidebar-collapsed' : ''}`}>
       <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
         <NavLink to="/" className="logo" end title="Vocabulary iknow">
-          <LogoMark />
+          <AppLogo className="logo-mark" />
           <div className="logo-copy">
             <span className="logo-text">Vocabulary</span>
             <span className="logo-accent">iknow</span>
@@ -147,7 +140,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               key={item.to}
               to={item.to}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              end={item.to === '/'}
+              end={'end' in item ? item.end : item.to === '/'}
               title={collapsed ? t(`nav.${item.key}`) : undefined}
             >
               <span className="nav-icon">
@@ -204,12 +197,15 @@ export default function Layout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="layout-shell">
-        <main className="main">
-          <div className="container">{children}</div>
+        <main className={`main${fluidPage ? ' main--fluid' : ''}${homePage ? ' main--home' : ''}`}>
+          <div
+            className={`container${fluidPage ? ' container--fluid' : ''}${homePage ? ' container--home' : ''}`}
+          >
+            {children}
+          </div>
         </main>
+        <IcpFooter variant="app" />
       </div>
-
-      <IcpFooter variant="app" />
 
       <div className="mobile-status-bar">
         <MobileUserMenu />
@@ -220,21 +216,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <nav className="nav-mobile">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) => `nav-mobile-link ${isActive ? 'active' : ''}`}
-            end={item.to === '/'}
-          >
-            <span className="nav-mobile-icon">
-              <NavIcon name={item.icon} />
-            </span>
-            <span className="nav-mobile-label">{t(`nav.${item.key}`)}</span>
-          </NavLink>
-        ))}
-      </nav>
+      <MobileBottomNav showAdmin={Boolean(user?.is_admin)} />
     </div>
   );
 }

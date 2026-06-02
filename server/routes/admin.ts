@@ -7,6 +7,8 @@ import {
   deleteUserById,
   assertCanDeleteUser,
   assertUserExists,
+  updateRegistrationEnabled,
+  setUserAdmin,
 } from '../services/adminService.js';
 import { updateUserPassword, AuthError } from '../services/authService.js';
 
@@ -20,6 +22,44 @@ router.get('/stats', (_req, res) => {
 
 router.get('/users', (_req, res) => {
   res.json(listUsersWithStats());
+});
+
+router.patch('/settings/registration', (req, res) => {
+  const { enabled } = req.body ?? {};
+  if (typeof enabled !== 'boolean') {
+    res.status(400).json({ error: '请提供 enabled 布尔值' });
+    return;
+  }
+
+  try {
+    res.json(updateRegistrationEnabled(enabled));
+  } catch (err) {
+    if (err instanceof AuthError) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+});
+
+router.put('/users/:id/admin', (req, res) => {
+  const userId = parseInt(req.params.id, 10);
+  const { is_admin: isAdmin } = req.body ?? {};
+  if (typeof isAdmin !== 'boolean') {
+    res.status(400).json({ error: '请提供 is_admin 布尔值' });
+    return;
+  }
+
+  try {
+    setUserAdmin(userId, req.userId, isAdmin);
+    res.json({ success: true });
+  } catch (err) {
+    if (err instanceof AuthError) {
+      res.status(err.status).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.put('/users/:id/password', (req, res) => {

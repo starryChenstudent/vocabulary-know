@@ -1,16 +1,16 @@
 .report-section {
-  margin-bottom: 24px;
+  margin-bottom: var(--section-gap);
 }
 
 .report-section .stat-grid {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .section-title {
   font-family: 'Fraunces', Georgia, serif;
   font-size: 1.2rem;
   font-weight: 700;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .result-breakdown {
@@ -22,7 +22,7 @@
 
 .mode-split {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   color: var(--text-muted);
   font-size: 0.875rem;
 }
@@ -31,9 +31,9 @@
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  height: 170px;
-  padding: 16px 0;
-  margin-bottom: 24px;
+  height: 150px;
+  padding: 12px 0;
+  margin-bottom: var(--section-gap);
 }
 
 .chart-bar-group {

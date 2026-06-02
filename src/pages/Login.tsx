@@ -3,34 +3,10 @@ import { Navigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LocaleToggle from '../components/LocaleToggle';
+import AppLogo from '../components/AppLogo';
 import IcpFooter from '../components/IcpFooter';
 import { useLocale } from '../components/LocaleProvider';
 import './Login.css';
-
-function LogoMark() {
-  return (
-    <svg className="login-logo" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <rect width="32" height="32" rx="10" fill="url(#login-logo-gradient)" />
-      <path
-        d="M9 10.5C9 9.67 9.67 9 10.5 9H15v14H10.5A1.5 1.5 0 0 1 9 21.5v-11Z"
-        fill="rgba(255,255,255,0.95)"
-      />
-      <path
-        d="M17 9h4.5c.83 0 1.5.67 1.5 1.5v11c0 .83-.67 1.5-1.5 1.5H17V9Z"
-        fill="rgba(255,255,255,0.75)"
-      />
-      <path d="M15 9v14" stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" />
-      <circle cx="22.5" cy="11.5" r="2.2" fill="#fff" />
-      <path d="M22.5 14.2v5.3" stroke="#fff" strokeWidth="2" strokeLinecap="round" />
-      <defs>
-        <linearGradient id="login-logo-gradient" x1="4" y1="4" x2="28" y2="28">
-          <stop stopColor="#0f766e" />
-          <stop offset="1" stopColor="#14b8a6" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
 
 export default function Login() {
   const { user, loading, login, register } = useAuth();
@@ -88,7 +64,7 @@ export default function Login() {
       <div className="login-page__center">
       <div className="login-card card fade-in">
         <div className="login-brand">
-          <LogoMark />
+          <AppLogo className="login-logo" />
           <div>
             <h1 className="login-title">Vocabulary iknow</h1>
             <p className="login-subtitle">{t('login.subtitle')}</p>

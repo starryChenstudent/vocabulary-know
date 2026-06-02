@@ -1,15 +1,9 @@
 import db from '../db.js';
 import type { Word } from '../types.js';
 import type { TestMode } from '../types.js';
+import { isVisionOcrAvailable, resolveLlmConfig } from './aiConfigService.js';
 
 export type TranslateDirection = TestMode;
-
-interface LlmConfig {
-  apiKey: string;
-  baseUrl: string;
-  model: string;
-  provider: 'dashscope' | 'openai';
-}
 
 export interface TranslateResult {
   direction: TranslateDirection;
@@ -22,29 +16,8 @@ export interface TranslateResult {
   llmAvailable: boolean;
 }
 
-function resolveLlmConfig(): LlmConfig | null {
-  if (process.env.DASHSCOPE_API_KEY) {
-    return {
-      provider: 'dashscope',
-      apiKey: process.env.DASHSCOPE_API_KEY,
-      baseUrl:
-        process.env.DASHSCOPE_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-      model: process.env.DASHSCOPE_TEXT_MODEL || 'qwen-turbo',
-    };
-  }
-  if (process.env.OPENAI_API_KEY) {
-    return {
-      provider: 'openai',
-      apiKey: process.env.OPENAI_API_KEY,
-      baseUrl: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
-      model: process.env.OPENAI_TEXT_MODEL || 'gpt-4o-mini',
-    };
-  }
-  return null;
-}
-
-export function isTranslateLlmAvailable(): boolean {
-  return resolveLlmConfig() !== null;
+export function isTranslateLlmAvailable(userId: number): boolean {
+  return isVisionOcrAvailable(userId);
 }
 
 export function searchWordsInBank(
@@ -78,10 +51,14 @@ export function searchWordsInBank(
     .all(userId, `%${q}%`, q) as Word[];
 }
 
-async function translateWithLlm(text: string, direction: TranslateDirection): Promise<string> {
-  const config = resolveLlmConfig();
+async function translateWithLlm(
+  userId: number,
+  text: string,
+  direction: TranslateDirection
+): Promise<string> {
+  const config = resolveLlmConfig(userId);
   if (!config) {
-    throw new Error('未配置 DASHSCOPE_API_KEY 或 OPENAI_API_KEY，无法使用 AI 翻译');
+    throw new Error('未配置 API Key，无法使用 AI 翻译（请在「模型服务」页面填写）');
   }
 
   const prompt =
@@ -97,7 +74,7 @@ async function translateWithLlm(text: string, direction: TranslateDirection): Pr
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: config.model,
+      model: config.textModel,
       temperature: 0,
       messages: [{ role: 'user', content: prompt }],
     }),
@@ -141,7 +118,7 @@ export async function translateText(
 
   const vocabularyMatches = searchWordsInBank(userId, input, direction);
   const bestMatch = pickBestVocabularyMatch(vocabularyMatches, input, direction);
-  const llmAvailable = isTranslateLlmAvailable();
+  const llmAvailable = isTranslateLlmAvailable(userId);
 
   if (bestMatch) {
     return {
@@ -169,7 +146,7 @@ export async function translateText(
     };
   }
 
-  const translation = await translateWithLlm(input, direction);
+  const translation = await translateWithLlm(userId, input, direction);
   return {
     direction,
     input,

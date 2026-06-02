@@ -61,8 +61,14 @@ export interface ImportResult {
   imported: number;
   duplicates: number;
   parsed: ParsedWord[];
-  rawText?: string;
   previewDataUrl?: string;
+  ocrUsage?: OcrUsageInfo;
+}
+
+export interface OcrUsageInfo {
+  preset: 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'custom' | 'tesseract';
+  model: string;
+  totalTokens: number;
 }
 
 export interface StatsOverview {

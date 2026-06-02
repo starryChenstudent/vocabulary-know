@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, type TestQuestion, type TestMode, type ResultType } from '../api/client';
+import PronounceButton from '../components/PronounceButton';
 import { useLocale } from '../components/LocaleProvider';
 import { useElapsedTimer } from '../hooks/useTime';
 import { formatDuration } from '../utils/time';
@@ -17,7 +18,7 @@ interface AnswerRecord {
 
 export default function Test() {
   const { t, locale } = useLocale();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const initialType = searchParams.get('type') === 'review' ? 'review' : 'daily';
   const [testType, setTestType] = useState<TestType>(initialType);
   const [testMode, setTestMode] = useState<TestMode | null>(null);
@@ -34,11 +35,36 @@ export default function Test() {
     expected: string;
   } | null>(null);
   const [records, setRecords] = useState<AnswerRecord[]>([]);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const elapsedSeconds = useElapsedTimer(started && !finished && questions.length > 0);
 
   const modeLabel = (mode: TestMode) => (mode === 'en_to_cn' ? t('test.enToCn') : t('test.cnToEn'));
   const resultLabel = (type: ResultType) => t(`result.${type}`);
+
+  const changeTestType = (type: TestType) => {
+    setTestType(type);
+    setSearchParams(type === 'review' ? { type: 'review' } : {});
+  };
+
+  const testTypeTabs = (
+    <div className="tab-bar test-type-tabs">
+      <button
+        type="button"
+        className={`tab ${testType === 'daily' ? 'active' : ''}`}
+        onClick={() => changeTestType('daily')}
+      >
+        {t('test.title')}
+      </button>
+      <button
+        type="button"
+        className={`tab ${testType === 'review' ? 'active' : ''}`}
+        onClick={() => changeTestType('review')}
+      >
+        {t('test.reviewTitle')}
+      </button>
+    </div>
+  );
 
   const loadReviewTest = useCallback(async () => {
     setLoading(true);
@@ -106,6 +132,8 @@ export default function Test() {
   }, [testType, loadReviewTest, resetDailySelection]);
 
   const current = questions[currentIndex];
+  const englishWord =
+    current && (current.mode === 'en_to_cn' ? current.prompt : current.answer);
 
   const handleSubmit = async () => {
     if (!current) return;
@@ -166,6 +194,21 @@ export default function Test() {
     setTimeout(() => inputRef.current?.focus(), 100);
   };
 
+  const exitTest = () => {
+    setShowExitConfirm(false);
+    setShowFeedback(false);
+    setUserAnswer('');
+    setLastResult(null);
+    setCurrentIndex(0);
+    setRecords([]);
+    setFinished(false);
+    if (testType === 'daily') {
+      resetDailySelection();
+    } else {
+      setStarted(false);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !showFeedback) {
       handleSubmit();
@@ -205,8 +248,9 @@ export default function Test() {
     return (
       <div className="test-page fade-in">
         <div className="page-header">
-          <h1 className="page-title">{t('test.title')}</h1>
+          <h1 className="page-title">{t('test.reviewTitle')}</h1>
         </div>
+        {testTypeTabs}
         <div className="empty-state card">
           <p>{t('test.noReviewWords')}</p>
           <p>{t('test.noReviewWordsHint')}</p>
@@ -240,18 +284,24 @@ export default function Test() {
               <div className="stat-label">{t('test.duration')}</div>
             </div>
           </div>
-          <button
-            className="btn btn-primary btn-lg"
-            onClick={() => {
-              if (testType === 'daily') {
-                resetDailySelection();
-              } else {
-                loadReviewTest();
-              }
-            }}
+          <div
+            className={`test-result-actions${testType === 'review' ? ' test-result-actions--dual' : ''}`}
           >
-            {testType === 'daily' ? t('test.backToMode') : t('test.anotherRound')}
-          </button>
+            {testType === 'review' ? (
+              <>
+                <button type="button" className="btn btn-secondary btn-lg" onClick={() => changeTestType('daily')}>
+                  {t('test.backToDaily')}
+                </button>
+                <button type="button" className="btn btn-primary btn-lg" onClick={() => loadReviewTest()}>
+                  {t('test.anotherRound')}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn btn-primary btn-lg" onClick={resetDailySelection}>
+                {t('test.backToMode')}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -267,20 +317,7 @@ export default function Test() {
           </p>
         </div>
 
-        <div className="tab-bar">
-          <button
-            className={`tab ${testType === 'daily' ? 'active' : ''}`}
-            onClick={() => setTestType('daily')}
-          >
-            {t('test.title')}
-          </button>
-          <button
-            className={`tab ${testType === 'review' ? 'active' : ''}`}
-            onClick={() => setTestType('review')}
-          >
-            {t('test.reviewTitle')}
-          </button>
-        </div>
+        {testTypeTabs}
 
         {testType === 'daily' ? (
           <div className="card test-start-card">
@@ -324,14 +361,24 @@ export default function Test() {
 
   return (
     <div className="test-page fade-in">
+      {testTypeTabs}
       <div className="test-header">
-        <span className="badge badge-purple">
-          {testType === 'daily' && testMode ? modeLabel(testMode) : modeLabel(current.mode)}
-        </span>
-        <span className="test-progress">
-          {currentIndex + 1} / {questions.length}
-        </span>
-        <span className="test-timer">{formatDuration(elapsedSeconds, locale)}</span>
+        <div className="test-header__meta">
+          <span className="badge badge-purple">
+            {testType === 'daily' && testMode ? modeLabel(testMode) : modeLabel(current.mode)}
+          </span>
+          <span className="test-progress">
+            {currentIndex + 1} / {questions.length}
+          </span>
+          <span className="test-timer">{formatDuration(elapsedSeconds, locale)}</span>
+        </div>
+        <button
+          type="button"
+          className="btn btn-secondary test-exit-btn"
+          onClick={() => setShowExitConfirm(true)}
+        >
+          {t('test.exitTest')}
+        </button>
       </div>
 
       <div className="progress-bar" style={{ marginBottom: 24 }}>
@@ -343,11 +390,14 @@ export default function Test() {
 
       <div className="card test-card">
         <div className="test-prompt">
-          {current.mode === 'en_to_cn' ? (
-            <span className="mono prompt-en">{current.prompt}</span>
-          ) : (
-            <span className="prompt-cn">{current.prompt}</span>
-          )}
+          <div className="test-prompt-row">
+            {current.mode === 'en_to_cn' ? (
+              <span className="mono prompt-en">{current.prompt}</span>
+            ) : (
+              <span className="prompt-cn">{current.prompt}</span>
+            )}
+            {englishWord && <PronounceButton word={englishWord} />}
+          </div>
         </div>
         <p className="test-hint">
           {current.mode === 'en_to_cn' ? t('test.hintEnToCn') : t('test.hintCnToEn')}
@@ -402,6 +452,37 @@ export default function Test() {
           </div>
         )}
       </div>
+
+      {showExitConfirm && (
+        <div
+          className="test-exit-backdrop"
+          role="presentation"
+          onClick={() => setShowExitConfirm(false)}
+        >
+          <div
+            className="test-exit-modal card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="test-exit-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="test-exit-title">{t('test.exitConfirmTitle')}</h3>
+            <p className="test-exit-modal__desc">{t('test.exitConfirmMessage')}</p>
+            <div className="test-exit-modal__actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setShowExitConfirm(false)}
+              >
+                {t('test.continueTest')}
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={exitTest}>
+                {t('test.confirmExit')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
