@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import Layout from './components/Layout';
+import IcpFooter from './components/IcpFooter';
 import { useLocale } from './components/LocaleProvider';
 import { useAuth } from './context/AuthContext';
 import Home from './pages/Home';
@@ -19,9 +20,12 @@ function ProtectedApp() {
   if (loading) {
     return (
       <div className="login-page">
-        <div className="login-card card">
-          <p className="login-muted">{t('common.loading')}</p>
+        <div className="login-page__center">
+          <div className="login-card card">
+            <p className="login-muted">{t('common.loading')}</p>
+          </div>
         </div>
+        <IcpFooter variant="login" />
       </div>
     );
   }

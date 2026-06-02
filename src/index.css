@@ -93,6 +93,21 @@ body {
     var(--bg);
 }
 
+@media (max-width: 900px) {
+  :root {
+    --mobile-bar-inset: clamp(8px, 2.5vw, 12px);
+    --mobile-bar-btn: clamp(36px, 10vw, 44px);
+    --mobile-nav-pad-y: clamp(2px, 1vw, 4px);
+    --mobile-nav-font: clamp(0.5625rem, 2.4vw, 0.625rem);
+    --mobile-nav-icon: clamp(16px, 4.5vw, 18px);
+    --mobile-nav-height: calc(
+      var(--mobile-nav-pad-y) * 2 + var(--mobile-nav-icon) + var(--mobile-nav-font) * 1.4 +
+        env(safe-area-inset-bottom, 0px)
+    );
+    --site-footer-offset: calc(var(--mobile-nav-height) + 6px);
+  }
+}
+
 #root {
   min-height: 100vh;
 }

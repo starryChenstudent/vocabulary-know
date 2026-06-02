@@ -52,7 +52,7 @@ router.get('/words/export', (req, res) => {
   const filename = `vocabulary-${new Date().toISOString().slice(0, 10)}.csv`;
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-  res.send(csv);
+  res.send(Buffer.from(csv, 'utf8'));
 });
 
 router.delete('/words/all', (req, res) => {

@@ -81,10 +81,9 @@ function escapeCsvField(value: string): string {
 
 export function exportWordsCsv(userId: number): string {
   const words = getAllWords(userId);
-  const header = 'english,chinese,created_at';
+  const header = 'english,chinese';
   const rows = words.map(
-    (word) =>
-      `${escapeCsvField(word.english)},${escapeCsvField(word.chinese)},${escapeCsvField(word.created_at)}`
+    (word) => `${escapeCsvField(word.english)},${escapeCsvField(word.chinese)}`
   );
   return `\uFEFF${[header, ...rows].join('\n')}`;
 }

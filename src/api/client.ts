@@ -165,11 +165,12 @@ export const api = {
       if (res.status === 401) onUnauthorized?.();
       throw new Error(err.error || '导出失败');
     }
-    const text = await res.text();
+    const buffer = await res.arrayBuffer();
     const disposition = res.headers.get('Content-Disposition') ?? '';
     const match = disposition.match(/filename="([^"]+)"/);
     const filename = match?.[1] ?? `vocabulary-${new Date().toISOString().slice(0, 10)}.csv`;
-    const blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+    // Keep raw UTF-8 bytes (incl. BOM) — res.text() can strip BOM and break Excel on Windows
+    const blob = new Blob([buffer], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

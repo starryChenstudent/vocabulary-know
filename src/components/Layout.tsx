@@ -4,6 +4,7 @@ import ClockDisplay from './ClockDisplay';
 import ThemeToggle from './ThemeToggle';
 import LocaleToggle from './LocaleToggle';
 import MobileUserMenu from './MobileUserMenu';
+import IcpFooter from './IcpFooter';
 import { useAuth } from '../context/AuthContext';
 import { useLocale } from './LocaleProvider';
 import './Layout.css';
@@ -207,6 +208,8 @@ export default function Layout({ children }: { children: ReactNode }) {
           <div className="container">{children}</div>
         </main>
       </div>
+
+      <IcpFooter variant="app" />
 
       <div className="mobile-status-bar">
         <MobileUserMenu />

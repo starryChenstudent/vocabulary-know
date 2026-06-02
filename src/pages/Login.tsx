@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import LocaleToggle from '../components/LocaleToggle';
+import IcpFooter from '../components/IcpFooter';
 import { useLocale } from '../components/LocaleProvider';
 import './Login.css';
 
@@ -50,9 +51,12 @@ export default function Login() {
     return (
       <div className="login-page">
         <LocaleToggle variant="login" />
-        <div className="login-card card">
-          <p className="login-muted">{t('common.loading')}</p>
+        <div className="login-page__center">
+          <div className="login-card card">
+            <p className="login-muted">{t('common.loading')}</p>
+          </div>
         </div>
+        <IcpFooter variant="login" />
       </div>
     );
   }
@@ -81,6 +85,7 @@ export default function Login() {
   return (
     <div className="login-page">
       <LocaleToggle variant="login" />
+      <div className="login-page__center">
       <div className="login-card card fade-in">
         <div className="login-brand">
           <LogoMark />
@@ -169,6 +174,8 @@ export default function Login() {
           <p className="login-muted">{t('login.registrationClosed')}</p>
         )}
       </div>
+      </div>
+      <IcpFooter variant="login" />
     </div>
   );
 }
