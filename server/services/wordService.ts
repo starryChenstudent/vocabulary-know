@@ -1,23 +1,26 @@
 import db from '../db.js';
 import type { Word, ParsedWord, ImportResult } from '../types.js';
 import { getTodayDate } from '../services/wordParser.js';
+import { WORD_SELECT, mapWordRow } from './spacedRepetitionService.js';
 
 export function getAllWords(userId: number): Word[] {
-  return db
-    .prepare('SELECT id, english, chinese, created_at FROM words WHERE user_id = ? ORDER BY created_at DESC')
-    .all(userId) as Word[];
+  const rows = db
+    .prepare(`SELECT ${WORD_SELECT} FROM words WHERE user_id = ? ORDER BY created_at DESC`)
+    .all(userId) as Array<Parameters<typeof mapWordRow>[0]>;
+  return rows.map(mapWordRow);
 }
 
 export function getWordById(id: number, userId: number): Word | undefined {
-  return db
-    .prepare('SELECT id, english, chinese, created_at FROM words WHERE id = ? AND user_id = ?')
-    .get(id, userId) as Word | undefined;
+  const row = db
+    .prepare(`SELECT ${WORD_SELECT} FROM words WHERE id = ? AND user_id = ?`)
+    .get(id, userId) as Parameters<typeof mapWordRow>[0] | undefined;
+  return row ? mapWordRow(row) : undefined;
 }
 
 export function importWords(userId: number, parsed: ParsedWord[]): ImportResult {
   const insert = db.prepare(
-    `INSERT OR IGNORE INTO words (user_id, english, chinese, created_at)
-     VALUES (?, ?, ?, datetime('now', 'localtime'))`
+    `INSERT OR IGNORE INTO words (user_id, english, chinese, created_at, srs_stage, next_review_date)
+     VALUES (?, ?, ?, datetime('now', 'localtime'), 0, NULL)`
   );
   const checkExists = db.prepare(
     'SELECT id FROM words WHERE user_id = ? AND english = ? COLLATE NOCASE'
@@ -81,9 +84,10 @@ function escapeCsvField(value: string): string {
 
 export function exportWordsCsv(userId: number): string {
   const words = getAllWords(userId);
-  const header = 'english,chinese';
+  const header = 'english,chinese,srs_stage,next_review_date';
   const rows = words.map(
-    (word) => `${escapeCsvField(word.english)},${escapeCsvField(word.chinese)}`
+    (word) =>
+      `${escapeCsvField(word.english)},${escapeCsvField(word.chinese)},${word.srs_stage},${word.next_review_date ?? ''}`
   );
   return `\uFEFF${[header, ...rows].join('\n')}`;
 }

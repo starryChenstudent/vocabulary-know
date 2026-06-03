@@ -2,9 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, type TestQuestion, type TestMode, type ResultType } from '../api/client';
 import PronounceButton from '../components/PronounceButton';
+import DictationPlayer from '../components/DictationPlayer';
 import { useLocale } from '../components/LocaleProvider';
+import { useDictationSettings } from '../hooks/useDictationSettings';
 import { useElapsedTimer } from '../hooks/useTime';
 import { formatDuration } from '../utils/time';
+import { primeAudioPlayback, preloadWordAudio } from '../utils/dictionaryAudio';
 import './Test.css';
 
 type TestType = 'daily' | 'review';
@@ -18,11 +21,16 @@ interface AnswerRecord {
 
 export default function Test() {
   const { t, locale } = useLocale();
+  const { settings: dictationSettings, setSettings: setDictationSettings } = useDictationSettings();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialType = searchParams.get('type') === 'review' ? 'review' : 'daily';
   const [testType, setTestType] = useState<TestType>(initialType);
   const [testMode, setTestMode] = useState<TestMode | null>(null);
-  const [todayWordCount, setTodayWordCount] = useState<number | null>(null);
+  const [dailyStats, setDailyStats] = useState<{
+    new: number;
+    due: number;
+    study: number;
+  } | null>(null);
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
@@ -33,14 +41,74 @@ export default function Test() {
   const [lastResult, setLastResult] = useState<{
     resultType: ResultType;
     expected: string;
+    submittedAnswer: string;
   } | null>(null);
   const [records, setRecords] = useState<AnswerRecord[]>([]);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dictationAutoStartedRef = useRef(false);
   const elapsedSeconds = useElapsedTimer(started && !finished && questions.length > 0);
 
-  const modeLabel = (mode: TestMode) => (mode === 'en_to_cn' ? t('test.enToCn') : t('test.cnToEn'));
+  const modeLabel = (mode: TestMode) => {
+    if (mode === 'en_to_cn') return t('test.enToCn');
+    if (mode === 'cn_to_en') return t('test.cnToEn');
+    return t('test.dictation');
+  };
   const resultLabel = (type: ResultType) => t(`result.${type}`);
+
+  const dictationSpeedLabel =
+    dictationSettings.playbackRate === 0.75
+      ? t('test.dictationSpeedSlow')
+      : dictationSettings.playbackRate === 1.25
+        ? t('test.dictationSpeedFast')
+        : t('test.dictationSpeedNormal');
+
+  const dictationAccentLabel =
+    dictationSettings.accent === 'us'
+      ? t('test.dictationAccentUs')
+      : dictationSettings.accent === 'uk'
+        ? t('test.dictationAccentUk')
+        : t('test.dictationAccentAny');
+
+  const dictationSettingsSummary = t('test.dictationSettingsSummary', {
+    count: dictationSettings.playCount,
+    speed: dictationSpeedLabel,
+    accent: dictationAccentLabel,
+  });
+
+  const loadDailyTest = useCallback(async (mode: TestMode) => {
+    setLoading(true);
+    setStarted(false);
+    setFinished(false);
+    setTestMode(mode);
+    setRecords([]);
+    setCurrentIndex(0);
+    try {
+      const qs = await api.getDailyTest(mode);
+      if (qs.length > 0 && mode === 'dictation') {
+        await preloadWordAudio(qs[0].answer, {
+          accent: dictationSettings.accent,
+          playbackRate: dictationSettings.playbackRate,
+        });
+      }
+      setQuestions(qs);
+      if (qs.length > 0) {
+        setStarted(true);
+        setTimeout(() => inputRef.current?.focus(), 100);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [dictationSettings.accent, dictationSettings.playbackRate]);
+
+  const startDailyTest = useCallback(async (mode: TestMode) => {
+    if (mode === 'dictation') {
+      await primeAudioPlayback();
+    }
+    await loadDailyTest(mode);
+  }, [loadDailyTest]);
 
   const changeTestType = (type: TestType) => {
     setTestType(type);
@@ -83,27 +151,6 @@ export default function Test() {
     }
   }, []);
 
-  const loadDailyTest = useCallback(async (mode: TestMode) => {
-    setLoading(true);
-    setStarted(false);
-    setFinished(false);
-    setTestMode(mode);
-    setRecords([]);
-    setCurrentIndex(0);
-    try {
-      const qs = await api.getDailyTest(mode);
-      setQuestions(qs);
-      if (qs.length > 0) {
-        setStarted(true);
-        setTimeout(() => inputRef.current?.focus(), 100);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const resetDailySelection = useCallback(() => {
     setStarted(false);
     setFinished(false);
@@ -126,21 +173,44 @@ export default function Test() {
     setLoading(true);
     api
       .getStats()
-      .then((stats) => setTodayWordCount(stats.todayNewWords))
+      .then((stats) =>
+        setDailyStats({
+          new: stats.todayNewWords,
+          due: stats.todayDueWords,
+          study: stats.todayStudyWords,
+        })
+      )
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [testType, loadReviewTest, resetDailySelection]);
 
+  useEffect(() => {
+    if (testType !== 'daily') return;
+    if (searchParams.get('mode') !== 'dictation') return;
+    if (dictationAutoStartedRef.current || loading || started) return;
+    if (!dailyStats || dailyStats.study === 0) return;
+
+    dictationAutoStartedRef.current = true;
+    void startDailyTest('dictation');
+    setSearchParams({}, { replace: true });
+  }, [testType, searchParams, loading, started, dailyStats, setSearchParams, startDailyTest]);
+
   const current = questions[currentIndex];
+  const isDictation = current?.mode === 'dictation';
   const englishWord =
-    current && (current.mode === 'en_to_cn' ? current.prompt : current.answer);
+    current &&
+    (current.mode === 'en_to_cn' ? current.prompt : current.answer);
 
   const handleSubmit = async () => {
     if (!current) return;
 
     try {
       const res = await api.submitAnswer(current.wordId, current.mode, userAnswer);
-      setLastResult({ resultType: res.resultType, expected: res.expected });
+      setLastResult({
+        resultType: res.resultType,
+        expected: res.expected,
+        submittedAnswer: userAnswer,
+      });
       setShowFeedback(true);
       setRecords((prev) => [
         ...prev,
@@ -163,7 +233,15 @@ export default function Test() {
     if (currentIndex + 1 >= questions.length) {
       setFinished(true);
     } else {
-      setCurrentIndex((i) => i + 1);
+      const nextIndex = currentIndex + 1;
+      const next = questions[nextIndex];
+      if (next?.mode === 'dictation') {
+        void preloadWordAudio(next.answer, {
+          accent: dictationSettings.accent,
+          playbackRate: dictationSettings.playbackRate,
+        });
+      }
+      setCurrentIndex(nextIndex);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   };
@@ -172,7 +250,11 @@ export default function Test() {
     if (!current) return;
     try {
       const res = await api.submitAnswer(current.wordId, current.mode, '');
-      setLastResult({ resultType: res.resultType, expected: res.expected });
+      setLastResult({
+        resultType: res.resultType,
+        expected: res.expected,
+        submittedAnswer: '',
+      });
       setShowFeedback(true);
       setRecords((prev) => [
         ...prev,
@@ -230,7 +312,7 @@ export default function Test() {
     return <div className="empty-state">{t('test.loadingQuestions')}</div>;
   }
 
-  if (testType === 'daily' && todayWordCount === 0) {
+  if (testType === 'daily' && dailyStats?.study === 0) {
     return (
       <div className="test-page fade-in">
         <div className="page-header">
@@ -310,50 +392,190 @@ export default function Test() {
   if (!started) {
     return (
       <div className="test-page fade-in">
-        <div className="page-header">
-          <h1 className="page-title">{t('test.title')}</h1>
-          <p className="page-desc">
-            {testType === 'daily' ? t('test.dailyDesc') : t('test.reviewDesc')}
-          </p>
+        <div className="page-header test-page-header">
+          <div className="test-page-header__text">
+            <h1 className="page-title">{t('test.title')}</h1>
+            <p className="page-desc">
+              {testType === 'daily' ? t('test.dailyDesc') : t('test.reviewDesc')}
+            </p>
+          </div>
+          {testTypeTabs}
         </div>
 
-        {testTypeTabs}
-
         {testType === 'daily' ? (
-          <div className="card test-start-card">
-            <div className="test-info">
-              <p>{t('test.todayNewWords', { count: todayWordCount ?? 0 })}</p>
-              <p className="test-info-detail">{t('test.dailyHint')}</p>
-            </div>
-            <div className="test-mode-actions">
-              <button
-                className="btn btn-primary btn-lg test-mode-btn"
-                onClick={() => loadDailyTest('en_to_cn')}
-                disabled={loading}
-              >
-                <span className="test-mode-label">{modeLabel('en_to_cn')}</span>
-                <span className="test-mode-desc">{t('test.enToCnDesc')}</span>
-              </button>
-              <button
-                className="btn btn-primary btn-lg test-mode-btn"
-                onClick={() => loadDailyTest('cn_to_en')}
-                disabled={loading}
-              >
-                <span className="test-mode-label">{modeLabel('cn_to_en')}</span>
-                <span className="test-mode-desc">{t('test.cnToEnDesc')}</span>
-              </button>
-            </div>
-          </div>
+          <>
+            <section className="test-overview card">
+              <div className="test-overview__hero">
+                <span className="test-overview__count">{dailyStats?.study ?? 0}</span>
+                <div className="test-overview__meta">
+                  <h2 className="test-overview__title">{t('test.missionStudyToday')}</h2>
+                  <div className="test-overview__pills">
+                    <span className="test-pill test-pill--new">
+                      {t('home.missionNew')} {dailyStats?.new ?? 0}
+                    </span>
+                    <span className="test-pill test-pill--due">
+                      {t('home.missionDue')} {dailyStats?.due ?? 0}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p className="test-overview__hint">{t('test.dailyHint')}</p>
+            </section>
+
+            <section className="test-mode-section">
+              <h2 className="test-mode-section__title">{t('test.selectMode')}</h2>
+              <div className="test-mode-list">
+                <button
+                  type="button"
+                  className="test-mode-item test-mode-item--green"
+                  onClick={() => startDailyTest('en_to_cn')}
+                  disabled={loading}
+                >
+                  <span className="test-mode-item__icon" aria-hidden>
+                    A
+                  </span>
+                  <span className="test-mode-item__body">
+                    <strong>{modeLabel('en_to_cn')}</strong>
+                    <span>{t('test.enToCnDesc')}</span>
+                  </span>
+                  <span className="test-mode-item__chevron" aria-hidden>
+                    ›
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="test-mode-item test-mode-item--teal"
+                  onClick={() => startDailyTest('cn_to_en')}
+                  disabled={loading}
+                >
+                  <span className="test-mode-item__icon" aria-hidden>
+                    中
+                  </span>
+                  <span className="test-mode-item__body">
+                    <strong>{modeLabel('cn_to_en')}</strong>
+                    <span>{t('test.cnToEnDesc')}</span>
+                  </span>
+                  <span className="test-mode-item__chevron" aria-hidden>
+                    ›
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="test-mode-item test-mode-item--purple"
+                  onClick={() => startDailyTest('dictation')}
+                  disabled={loading}
+                >
+                  <span className="test-mode-item__icon" aria-hidden>
+                    ♪
+                  </span>
+                  <span className="test-mode-item__body">
+                    <strong>{modeLabel('dictation')}</strong>
+                    <span>{t('test.dictationDesc')}</span>
+                  </span>
+                  <span className="test-mode-item__chevron" aria-hidden>
+                    ›
+                  </span>
+                </button>
+              </div>
+            </section>
+
+            <details className="test-dictation-panel card">
+              <summary className="test-dictation-panel__summary">
+                <span className="test-dictation-panel__label">{t('test.dictationSettingsTitle')}</span>
+                <span className="test-dictation-panel__preview">{dictationSettingsSummary}</span>
+              </summary>
+              <div className="dictation-settings">
+                <div className="dictation-settings__grid">
+                  <label className="dictation-settings__field">
+                    <span>{t('test.dictationPlayCount')}</span>
+                    <div className="dictation-settings__segmented">
+                      {([1, 2, 3] as const).map((count) => (
+                        <button
+                          key={count}
+                          type="button"
+                          className={`dictation-settings__option${
+                            dictationSettings.playCount === count ? ' active' : ''
+                          }`}
+                          onClick={() => setDictationSettings({ playCount: count })}
+                        >
+                          {t('test.dictationPlayCountOption', { count })}
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+
+                  <label className="dictation-settings__field">
+                    <span>{t('test.dictationSpeed')}</span>
+                    <div className="dictation-settings__segmented">
+                      {(
+                        [
+                          { value: 0.75, label: t('test.dictationSpeedSlow') },
+                          { value: 1, label: t('test.dictationSpeedNormal') },
+                          { value: 1.25, label: t('test.dictationSpeedFast') },
+                        ] as const
+                      ).map((item) => (
+                        <button
+                          key={item.value}
+                          type="button"
+                          className={`dictation-settings__option${
+                            dictationSettings.playbackRate === item.value ? ' active' : ''
+                          }`}
+                          onClick={() => setDictationSettings({ playbackRate: item.value })}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+
+                  <label className="dictation-settings__field">
+                    <span>{t('test.dictationAccent')}</span>
+                    <div className="dictation-settings__segmented">
+                      {(
+                        [
+                          { value: 'us', label: t('test.dictationAccentUs') },
+                          { value: 'uk', label: t('test.dictationAccentUk') },
+                          { value: 'any', label: t('test.dictationAccentAny') },
+                        ] as const
+                      ).map((item) => (
+                        <button
+                          key={item.value}
+                          type="button"
+                          className={`dictation-settings__option${
+                            dictationSettings.accent === item.value ? ' active' : ''
+                          }`}
+                          onClick={() => setDictationSettings({ accent: item.value })}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </details>
+          </>
         ) : (
-          <div className="card test-start-card">
-            <div className="test-info">
-              <p>{t('test.reviewCount', { count: questions.length })}</p>
-              <p className="test-info-detail">{t('test.reviewHint')}</p>
+          <section className="test-overview card test-overview--review">
+            <div className="test-overview__hero">
+              <span className="test-overview__count test-overview__count--purple">
+                {questions.length}
+              </span>
+              <div className="test-overview__meta">
+                <h2 className="test-overview__title">{t('test.reviewTitle')}</h2>
+                <p className="test-overview__hint test-overview__hint--inline">
+                  {t('test.reviewHint')}
+                </p>
+              </div>
             </div>
-            <button className="btn btn-primary btn-lg" onClick={handleStart}>
+            <button
+              type="button"
+              className="btn btn-primary btn-lg test-review-start"
+              onClick={handleStart}
+            >
               {t('test.startReview')}
             </button>
-          </div>
+          </section>
         )}
       </div>
     );
@@ -367,6 +589,11 @@ export default function Test() {
           <span className="badge badge-purple">
             {testType === 'daily' && testMode ? modeLabel(testMode) : modeLabel(current.mode)}
           </span>
+          {testType === 'daily' && current.queue && (
+            <span className="badge badge-muted">
+              {current.queue === 'new' ? t('test.queueNew') : t('test.queueDue')}
+            </span>
+          )}
           <span className="test-progress">
             {currentIndex + 1} / {questions.length}
           </span>
@@ -390,17 +617,30 @@ export default function Test() {
 
       <div className="card test-card">
         <div className="test-prompt">
-          <div className="test-prompt-row">
-            {current.mode === 'en_to_cn' ? (
-              <span className="mono prompt-en">{current.prompt}</span>
-            ) : (
-              <span className="prompt-cn">{current.prompt}</span>
-            )}
-            {englishWord && <PronounceButton word={englishWord} />}
-          </div>
+          {isDictation ? (
+            <DictationPlayer
+              word={current.answer}
+              settings={dictationSettings}
+              autoPlay={!showFeedback}
+              playKey={`${current.wordId}-${currentIndex}-${showFeedback ? 'fb' : 'q'}`}
+            />
+          ) : (
+            <div className="test-prompt-row">
+              {current.mode === 'en_to_cn' ? (
+                <span className="mono prompt-en">{current.prompt}</span>
+              ) : (
+                <span className="prompt-cn">{current.prompt}</span>
+              )}
+              {englishWord && <PronounceButton word={englishWord} />}
+            </div>
+          )}
         </div>
         <p className="test-hint">
-          {current.mode === 'en_to_cn' ? t('test.hintEnToCn') : t('test.hintCnToEn')}
+          {isDictation
+            ? t('test.dictationHint')
+            : current.mode === 'en_to_cn'
+              ? t('test.hintEnToCn')
+              : t('test.hintCnToEn')}
         </p>
 
         {!showFeedback ? (
@@ -413,9 +653,11 @@ export default function Test() {
               onKeyDown={handleKeyDown}
               autoFocus
               placeholder={
-                current.mode === 'en_to_cn'
-                  ? t('test.placeholderEnToCn')
-                  : t('test.placeholderCnToEn')
+                isDictation
+                  ? t('test.placeholderDictation')
+                  : current.mode === 'en_to_cn'
+                    ? t('test.placeholderEnToCn')
+                    : t('test.placeholderCnToEn')
               }
             />
             <div className="test-actions">
@@ -441,10 +683,23 @@ export default function Test() {
               {lastResult && resultLabel(lastResult.resultType)}
             </div>
             {lastResult?.resultType !== 'correct' && (
-              <p className="feedback-answer">
-                {t('test.correctAnswer')}
-                <strong>{lastResult?.expected}</strong>
-              </p>
+              <>
+                {lastResult.submittedAnswer.trim() && (
+                  <p className="feedback-answer feedback-answer--user">
+                    {t('test.yourAnswer')}
+                    <strong>{lastResult.submittedAnswer}</strong>
+                  </p>
+                )}
+                <p className="feedback-answer">
+                  {t('test.correctAnswer')}
+                  <strong>{lastResult?.expected}</strong>
+                </p>
+                {isDictation && current.prompt && (
+                  <p className="feedback-meaning">
+                    {t('test.dictationMeaning', { meaning: current.prompt })}
+                  </p>
+                )}
+              </>
             )}
             <button className="btn btn-primary btn-lg" onClick={handleNext}>
               {currentIndex + 1 >= questions.length ? t('test.viewResult') : t('test.nextQuestion')}

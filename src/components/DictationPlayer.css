@@ -1,0 +1,67 @@
+.dictation-player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.dictation-player__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: min(100%, 280px);
+  min-height: 88px;
+  padding: 18px 28px;
+  border: 2px solid rgba(15, 118, 110, 0.2);
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgba(15, 118, 110, 0.12), rgba(15, 118, 110, 0.04)),
+    var(--bg-card);
+  color: var(--accent);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dictation-player__btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(15, 118, 110, 0.45);
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.12);
+}
+
+.dictation-player__btn:disabled {
+  opacity: 0.75;
+  cursor: wait;
+}
+
+.dictation-player__btn svg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.dictation-player__btn--loading svg {
+  animation: dictation-pulse 1s ease-in-out infinite;
+}
+
+.dictation-player__label {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.dictation-player__error,
+.dictation-player__unsupported {
+  color: var(--error);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+@keyframes dictation-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}

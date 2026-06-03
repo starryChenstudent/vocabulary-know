@@ -82,6 +82,61 @@ function migrateUsersAdmin(db: Database.Database): void {
   db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0');
 }
 
+function migrateTestRecordsDictationMode(db: Database.Database): void {
+  const row = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='test_records'")
+    .get() as { sql: string } | undefined;
+  if (row?.sql?.includes("'dictation'")) return;
+
+  db.transaction(() => {
+    db.exec(`
+      CREATE TABLE test_records_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        word_id INTEGER NOT NULL,
+        test_date TEXT NOT NULL,
+        mode TEXT NOT NULL CHECK(mode IN ('en_to_cn', 'cn_to_en', 'dictation')),
+        result_type TEXT NOT NULL CHECK(result_type IN ('correct', 'spelling_error', 'meaning_wrong', 'unknown')),
+        user_answer TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+        FOREIGN KEY (word_id) REFERENCES words(id) ON DELETE CASCADE
+      );
+
+      INSERT INTO test_records_new (id, word_id, test_date, mode, result_type, user_answer, created_at)
+        SELECT id, word_id, test_date, mode, result_type, user_answer, created_at FROM test_records;
+
+      DROP TABLE test_records;
+      ALTER TABLE test_records_new RENAME TO test_records;
+
+      CREATE INDEX IF NOT EXISTS idx_test_records_date ON test_records(test_date);
+      CREATE INDEX IF NOT EXISTS idx_test_records_word ON test_records(word_id);
+      CREATE INDEX IF NOT EXISTS idx_test_records_result ON test_records(result_type);
+    `);
+  })();
+}
+
+function migrateWordsSrs(db: Database.Database): void {
+  if (!columnExists(db, 'words', 'srs_stage')) {
+    db.exec('ALTER TABLE words ADD COLUMN srs_stage INTEGER NOT NULL DEFAULT 0');
+  }
+  if (!columnExists(db, 'words', 'next_review_date')) {
+    db.exec('ALTER TABLE words ADD COLUMN next_review_date TEXT');
+  }
+  if (!columnExists(db, 'words', 'last_review_date')) {
+    db.exec('ALTER TABLE words ADD COLUMN last_review_date TEXT');
+  }
+
+  db.exec(`
+    UPDATE words
+    SET next_review_date = date('now', 'localtime')
+    WHERE next_review_date IS NULL
+      AND date(created_at) < date('now', 'localtime')
+  `);
+
+  db.exec(
+    'CREATE INDEX IF NOT EXISTS idx_words_user_next_review ON words(user_id, next_review_date)'
+  );
+}
+
 function migrateAiProviderConfigs(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_ai_provider_configs (
@@ -177,7 +232,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     word_id INTEGER NOT NULL,
     test_date TEXT NOT NULL,
-    mode TEXT NOT NULL CHECK(mode IN ('en_to_cn', 'cn_to_en')),
+    mode TEXT NOT NULL CHECK(mode IN ('en_to_cn', 'cn_to_en', 'dictation')),
     result_type TEXT NOT NULL CHECK(result_type IN ('correct', 'spelling_error', 'meaning_wrong', 'unknown')),
     user_answer TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
@@ -213,6 +268,8 @@ db.exec(`
   ensureWordsCreatedAtDefault(db);
   migrateUsersAdmin(db);
   migrateAiProviderConfigs(db);
+  migrateTestRecordsDictationMode(db);
+  migrateWordsSrs(db);
 
 export default db;
 
@@ -220,7 +277,7 @@ export function closeDb(): void {
   db.close();
 }
 
-export type TestMode = 'en_to_cn' | 'cn_to_en';
+export type TestMode = 'en_to_cn' | 'cn_to_en' | 'dictation';
 export type ResultType = 'correct' | 'spelling_error' | 'meaning_wrong' | 'unknown';
 
 export interface Word {

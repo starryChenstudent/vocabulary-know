@@ -92,7 +92,7 @@ export interface ProviderModelsInput {
   apiKey?: string;
 }
 
-export type TestMode = 'en_to_cn' | 'cn_to_en';
+export type TestMode = 'en_to_cn' | 'cn_to_en' | 'dictation';
 export type ResultType = 'correct' | 'spelling_error' | 'meaning_wrong' | 'unknown';
 
 export interface Word {
@@ -100,6 +100,9 @@ export interface Word {
   english: string;
   chinese: string;
   created_at: string;
+  srs_stage: number;
+  next_review_date: string | null;
+  last_review_date: string | null;
 }
 
 export interface TestQuestion {
@@ -107,6 +110,7 @@ export interface TestQuestion {
   mode: TestMode;
   prompt: string;
   answer: string;
+  queue?: 'new' | 'due';
 }
 
 export interface DailyReport {
@@ -119,6 +123,7 @@ export interface DailyReport {
   accuracy: number;
   enToCnTests: number;
   cnToEnTests: number;
+  dictationTests: number;
   newWordsAdded: number;
 }
 
@@ -142,6 +147,9 @@ export interface WeeklyReviewWord {
 export interface StatsOverview {
   totalWords: number;
   todayNewWords: number;
+  todayDueWords: number;
+  todayStudyWords: number;
+  todayStudiedWords: number;
   todayTests: number;
   todayAccuracy: number;
   errorBookCount: number;
@@ -379,4 +387,5 @@ export const RESULT_LABELS: Record<ResultType, string> = {
 export const MODE_LABELS: Record<TestMode, string> = {
   en_to_cn: '英 → 中',
   cn_to_en: '中 → 英',
+  dictation: '听写',
 };

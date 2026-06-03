@@ -12,25 +12,57 @@ import type {
 } from '../types.js';
 import { getTodayDate, getDateDaysAgo, shuffleArray } from '../services/wordParser.js';
 import { getNewWordsToday } from '../services/wordService.js';
+import {
+  applySrsAfterTest,
+  getDailyStudyWords,
+  getDueWordsTodayCount,
+  getNewWordsTodayList,
+  getTodayStudiedWordsCount,
+  mapWordRow,
+  WORD_SELECT,
+} from '../services/spacedRepetitionService.js';
 
-function getTodayWords(userId: number): Word[] {
-  const today = getTodayDate();
-  return db
-    .prepare(
-      'SELECT id, english, chinese, created_at FROM words WHERE user_id = ? AND date(created_at) = date(?)'
-    )
-    .all(userId, today) as Word[];
-}
+function buildQuestion(word: Word, mode: TestMode, queue: 'new' | 'due'): TestQuestion {
+  if (mode === 'dictation') {
+    return {
+      wordId: word.id,
+      mode,
+      prompt: word.chinese,
+      answer: word.english,
+      queue,
+    };
+  }
 
-function buildDailyQuestions(userId: number, mode: TestMode): TestQuestion[] {
-  const shuffled = shuffleArray(getTodayWords(userId));
-
-  return shuffled.map((word) => ({
+  return {
     wordId: word.id,
     mode,
     prompt: mode === 'en_to_cn' ? word.english : word.chinese,
     answer: mode === 'en_to_cn' ? word.chinese : word.english,
-  }));
+    queue,
+  };
+}
+
+function buildDailyQuestions(userId: number, mode: TestMode): TestQuestion[] {
+  const today = getTodayDate();
+  const newWords = getNewWordsTodayList(userId);
+  const newIds = new Set(newWords.map((w) => w.id));
+
+  const dueRows = db
+    .prepare(
+      `SELECT ${WORD_SELECT} FROM words
+       WHERE user_id = ?
+         AND date(created_at) < date(?)
+         AND (next_review_date IS NULL OR date(next_review_date) <= date(?))`
+    )
+    .all(userId, today, today) as Array<Parameters<typeof mapWordRow>[0]>;
+
+  const dueWords = dueRows.map(mapWordRow);
+  const combined = [
+    ...newWords.map((w) => buildQuestion(w, mode, 'new')),
+    ...dueWords.filter((w) => !newIds.has(w.id)).map((w) => buildQuestion(w, mode, 'due')),
+  ];
+
+  return shuffleArray(combined);
 }
 
 export function getDailyTest(userId: number, mode: TestMode): TestQuestion[] {
@@ -54,6 +86,8 @@ export function submitTestResult(userId: number, input: TestResultInput): void {
     `INSERT INTO test_records (word_id, test_date, mode, result_type, user_answer)
      VALUES (?, ?, ?, ?, ?)`
   ).run(input.wordId, today, input.mode, input.resultType, input.userAnswer ?? null);
+
+  applySrsAfterTest(input.wordId, input.resultType);
 }
 
 export function submitTestResults(userId: number, results: TestResultInput[]): void {
@@ -68,6 +102,7 @@ export function submitTestResults(userId: number, results: TestResultInput[]): v
     for (const r of items) {
       if (!checkWord.get(r.wordId, userId)) continue;
       insert.run(r.wordId, today, r.mode, r.resultType, r.userAnswer ?? null);
+      applySrsAfterTest(r.wordId, r.resultType);
     }
   });
 
@@ -86,7 +121,8 @@ export function getDailyReport(userId: number, date?: string): DailyReport {
         SUM(CASE WHEN tr.result_type = 'meaning_wrong' THEN 1 ELSE 0 END) as meaning_wrong,
         SUM(CASE WHEN tr.result_type = 'unknown' THEN 1 ELSE 0 END) as unknown,
         SUM(CASE WHEN tr.mode = 'en_to_cn' THEN 1 ELSE 0 END) as en_to_cn,
-        SUM(CASE WHEN tr.mode = 'cn_to_en' THEN 1 ELSE 0 END) as cn_to_en
+        SUM(CASE WHEN tr.mode = 'cn_to_en' THEN 1 ELSE 0 END) as cn_to_en,
+        SUM(CASE WHEN tr.mode = 'dictation' THEN 1 ELSE 0 END) as dictation
        FROM test_records tr
        JOIN words w ON w.id = tr.word_id
        WHERE tr.test_date = ? AND w.user_id = ?`
@@ -99,6 +135,7 @@ export function getDailyReport(userId: number, date?: string): DailyReport {
     unknown: number;
     en_to_cn: number;
     cn_to_en: number;
+    dictation: number;
   };
 
   const newWords = db
@@ -120,6 +157,7 @@ export function getDailyReport(userId: number, date?: string): DailyReport {
     accuracy: total > 0 ? Math.round((correct / total) * 100) : 0,
     enToCnTests: stats.en_to_cn ?? 0,
     cnToEnTests: stats.cn_to_en ?? 0,
+    dictationTests: stats.dictation ?? 0,
     newWordsAdded: newWords.count ?? 0,
   };
 }
@@ -137,7 +175,7 @@ export function getErrorBook(userId: number): ErrorWordEntry[] {
   const rows = db
     .prepare(
       `SELECT
-        w.id, w.english, w.chinese, w.created_at,
+        w.id, w.english, w.chinese, w.created_at, w.srs_stage, w.next_review_date, w.last_review_date,
         COUNT(*) as error_count,
         MAX(tr.test_date) as last_error_date,
         (SELECT result_type FROM test_records tr2
@@ -157,6 +195,9 @@ export function getErrorBook(userId: number): ErrorWordEntry[] {
     english: string;
     chinese: string;
     created_at: string;
+    srs_stage: number;
+    next_review_date: string | null;
+    last_review_date: string | null;
     error_count: number;
     last_error_date: string;
     last_error: ResultType;
@@ -166,12 +207,7 @@ export function getErrorBook(userId: number): ErrorWordEntry[] {
   }>;
 
   return rows.map((r) => ({
-    word: {
-      id: r.id,
-      english: r.english,
-      chinese: r.chinese,
-      created_at: r.created_at,
-    },
+    word: mapWordRow(r),
     errorCount: r.error_count,
     lastError: r.last_error,
     lastErrorDate: r.last_error_date,
@@ -189,11 +225,12 @@ export function getWeeklyReview(userId: number): WeeklyReviewWord[] {
   const today = getTodayDate();
 
   const words = db
-    .prepare('SELECT id, english, chinese, created_at FROM words WHERE user_id = ?')
-    .all(userId) as Word[];
+    .prepare(`SELECT ${WORD_SELECT} FROM words WHERE user_id = ?`)
+    .all(userId) as Array<Parameters<typeof mapWordRow>[0]>;
   const reviewWords: WeeklyReviewWord[] = [];
 
-  for (const word of words) {
+  for (const row of words) {
+    const word = mapWordRow(row);
     const errors = db
       .prepare(
         `SELECT result_type, test_date FROM test_records
@@ -278,12 +315,17 @@ export function getStatsOverview(userId: number): StatsOverview {
   const todayReport = getDailyReport(userId);
   const errorBook = getErrorBook(userId);
   const weeklyReview = getWeeklyReview(userId);
+  const todayNewWords = getNewWordsToday(userId);
+  const todayDueWords = getDueWordsTodayCount(userId);
 
   const streak = calculateStreak(userId);
 
   return {
     totalWords,
-    todayNewWords: getNewWordsToday(userId),
+    todayNewWords,
+    todayDueWords,
+    todayStudyWords: getDailyStudyWords(userId).length,
+    todayStudiedWords: getTodayStudiedWordsCount(userId),
     todayTests: todayReport.totalTests,
     todayAccuracy: todayReport.accuracy,
     errorBookCount: errorBook.length,

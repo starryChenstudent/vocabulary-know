@@ -53,7 +53,7 @@
 }
 
 .home > .stat-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   height: 100%;
 }
@@ -73,6 +73,135 @@
 .home .stat-label {
   font-size: 0.78rem;
   margin-top: 4px;
+}
+
+.today-mission {
+  padding: 18px 20px;
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.06), rgba(124, 58, 237, 0.04)),
+    var(--bg-card);
+}
+
+.today-mission__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.today-mission__title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.today-mission__summary {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.today-mission__sep {
+  margin: 0 6px;
+  opacity: 0.5;
+}
+
+.today-mission__chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mission-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.mission-chip__value {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mission-chip__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.mission-chip--new .mission-chip__value { color: var(--success); }
+.mission-chip--due .mission-chip__value { color: var(--accent); }
+.mission-chip--urgent .mission-chip__value { color: var(--purple); }
+
+.mission-chip--new { border-color: rgba(22, 163, 74, 0.2); background: var(--success-soft); }
+.mission-chip--due { border-color: rgba(15, 118, 110, 0.2); background: var(--accent-soft); }
+.mission-chip--urgent { border-color: rgba(124, 58, 237, 0.2); background: var(--purple-soft); }
+
+.today-mission__progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-hover);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.today-mission__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--success));
+  transition: width 0.35s ease;
+}
+
+.today-mission__actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.today-mission__cta {
+  flex: 2;
+  min-width: 0;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.today-mission__sub {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.today-mission__empty {
+  text-align: center;
+  padding: 8px 0 4px;
+}
+
+.today-mission__empty p {
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.today-mission__empty-hint {
+  font-size: 0.88rem;
+  font-weight: 500 !important;
+  color: var(--text-muted);
+  margin-bottom: 16px !important;
 }
 
 .action-grid {
@@ -148,19 +277,28 @@
   .home > .stat-grid {
     grid-column: 2;
     grid-row: 1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
     align-content: start;
+  }
+
+  .home > .today-mission {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 
   .home > .action-grid {
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 3;
   }
 }
 
 @media (max-width: 900px) {
   .home {
     max-width: 640px;
+  }
+
+  .home > .stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .action-grid {
@@ -171,6 +309,22 @@
 @media (max-width: 640px) {
   .hero {
     padding: 16px;
+  }
+
+  .today-mission {
+    padding: 16px;
+  }
+
+  .today-mission__chips {
+    gap: 8px;
+  }
+
+  .mission-chip__value {
+    font-size: 1.45rem;
+  }
+
+  .home > .stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .home .stat-item {
@@ -196,5 +350,10 @@
 
   .action-grid {
     grid-template-columns: 1fr;
+  }
+
+  .today-mission__actions .btn-lg {
+    padding: 12px 10px;
+    font-size: 0.85rem;
   }
 }

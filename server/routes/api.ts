@@ -229,7 +229,7 @@ router.post('/translate', async (req, res) => {
 
 router.get('/test/daily', (req, res) => {
   const mode = req.query.mode as TestMode | 'combined' | undefined;
-  if (mode === 'en_to_cn' || mode === 'cn_to_en') {
+  if (mode === 'en_to_cn' || mode === 'cn_to_en' || mode === 'dictation') {
     res.json(getDailyTest(req.userId, mode));
   } else {
     res.json(getCombinedDailyTest(req.userId));
@@ -252,7 +252,7 @@ router.post('/test/submit', (req, res) => {
   let resultType;
   if (mode === 'en_to_cn') {
     resultType = classifyEnToCnResult(word.chinese, userAnswer ?? '');
-  } else if (mode === 'cn_to_en') {
+  } else if (mode === 'cn_to_en' || mode === 'dictation') {
     resultType = classifyCnToEnResult(word.english, userAnswer ?? '');
   } else {
     res.status(400).json({ error: '无效的模式' });

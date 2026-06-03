@@ -1,6 +1,371 @@
+.test-page {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+}
+
+.test-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 4px;
+}
+
+.test-page-header .test-type-tabs {
+  margin-bottom: 0;
+  align-self: flex-start;
+}
+
 .test-type-tabs {
   margin-bottom: 18px;
 }
+
+@media (min-width: 720px) {
+  .test-page-header {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .test-page-header .test-type-tabs {
+    flex-shrink: 0;
+  }
+}
+
+/* ── Overview ── */
+
+.test-overview {
+  padding: 22px 20px;
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.07), rgba(124, 58, 237, 0.04)),
+    var(--bg-card);
+}
+
+.test-overview--review {
+  display: grid;
+  gap: 18px;
+}
+
+.test-overview__hero {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.test-overview__count {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border-radius: 20px;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid rgba(15, 118, 110, 0.18);
+}
+
+.test-overview__count--purple {
+  color: var(--purple);
+  background: var(--purple-soft);
+  border-color: rgba(124, 58, 237, 0.18);
+}
+
+.test-overview__meta {
+  min-width: 0;
+}
+
+.test-overview__title {
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.test-overview__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.test-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.test-pill--new {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: rgba(5, 150, 105, 0.18);
+}
+
+.test-pill--due {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: rgba(15, 118, 110, 0.18);
+}
+
+.test-overview__hint {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.test-overview__hint--inline {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.test-review-start {
+  width: 100%;
+}
+
+/* ── Mode list ── */
+
+.test-mode-section {
+  display: grid;
+  gap: 10px;
+}
+
+.test-mode-section__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding-left: 2px;
+}
+
+.test-mode-list {
+  display: grid;
+  gap: 10px;
+}
+
+.test-mode-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.test-mode-item:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.test-mode-item:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.test-mode-item--green:hover:not(:disabled) {
+  border-color: rgba(5, 150, 105, 0.28);
+}
+
+.test-mode-item--teal:hover:not(:disabled) {
+  border-color: rgba(15, 118, 110, 0.28);
+}
+
+.test-mode-item--purple:hover:not(:disabled) {
+  border-color: rgba(124, 58, 237, 0.22);
+}
+
+.test-mode-item__icon {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.test-mode-item--green .test-mode-item__icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.test-mode-item--teal .test-mode-item__icon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.test-mode-item--purple .test-mode-item__icon {
+  background: var(--purple-soft);
+  color: var(--purple);
+}
+
+.test-mode-item__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.test-mode-item__body strong {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.test-mode-item__body span {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.test-mode-item__chevron {
+  flex-shrink: 0;
+  font-size: 1.35rem;
+  font-weight: 300;
+  color: var(--text-faint);
+  line-height: 1;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.test-mode-item:hover:not(:disabled) .test-mode-item__chevron {
+  transform: translateX(2px);
+  color: var(--text-muted);
+}
+
+@media (min-width: 640px) {
+  .test-mode-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .test-mode-item {
+    flex-direction: column;
+    align-items: flex-start;
+    height: 100%;
+    padding: 20px 18px;
+  }
+
+  .test-mode-item__chevron {
+    display: none;
+  }
+}
+
+/* ── Dictation panel ── */
+
+.test-dictation-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.test-dictation-panel__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.test-dictation-panel__summary::-webkit-details-marker {
+  display: none;
+}
+
+.test-dictation-panel__label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.test-dictation-panel__preview {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.test-dictation-panel[open] .test-dictation-panel__summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.dictation-settings {
+  padding: 16px 18px 18px;
+}
+
+.dictation-settings__grid {
+  display: grid;
+  gap: 16px;
+}
+
+.dictation-settings__field {
+  display: grid;
+  gap: 8px;
+}
+
+.dictation-settings__field > span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.dictation-settings__segmented {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+
+.dictation-settings__option {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 8px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dictation-settings__option:hover {
+  color: var(--text);
+}
+
+.dictation-settings__option.active {
+  background: var(--bg-card);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── In-test UI ── */
 
 .test-result-stats {
   margin: 16px 0;
@@ -28,53 +393,9 @@
   }
 }
 
-.test-start-card {
-  text-align: center;
-  padding: 32px 20px;
-}
-
-.test-info {
-  margin-bottom: 16px;
-}
-
-.test-info strong {
-  color: var(--accent);
-  font-family: 'Fraunces', Georgia, serif;
-  font-size: 1.5rem;
-}
-
-.test-info-detail {
+.feedback-meaning {
   color: var(--text-muted);
-  font-size: 0.9rem;
-  margin-top: 8px;
-}
-
-.test-mode-actions {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-  max-width: 520px;
-  margin: 0 auto;
-}
-
-.test-mode-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 18px 20px;
-  height: auto;
-}
-
-.test-mode-label {
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-
-.test-mode-desc {
-  font-size: 0.82rem;
-  font-weight: 500;
-  opacity: 0.85;
+  margin: -8px 0 22px;
 }
 
 .test-header {
@@ -225,6 +546,18 @@
 
 .feedback-answer {
   color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.feedback-answer--user {
+  margin-bottom: 8px;
+}
+
+.feedback-answer--user strong {
+  color: var(--error);
+}
+
+.feedback-answer:last-of-type {
   margin-bottom: 22px;
 }
 
@@ -240,4 +573,24 @@
 .test-result-card h2 {
   font-family: 'Fraunces', Georgia, serif;
   font-size: 1.75rem;
+}
+
+@media (max-width: 480px) {
+  .test-overview__count {
+    width: 64px;
+    height: 64px;
+    font-size: 1.75rem;
+    border-radius: 18px;
+  }
+
+  .test-dictation-panel__summary {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .dictation-settings__option {
+    padding: 8px 4px;
+    font-size: 0.76rem;
+  }
 }

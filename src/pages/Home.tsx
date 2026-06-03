@@ -47,12 +47,29 @@ export default function Home() {
 
   if (loading) return <div className="empty-state">{t('common.loading')}</div>;
 
-  const getDesc = (descKey: string, countKey?: 'weeklyReviewCount' | 'errorBookCount') => {
+  const getDesc = (
+    descKey: string,
+    countKey?: 'weeklyReviewCount' | 'errorBookCount',
+    actionTo?: string
+  ) => {
+    if (actionTo === '/test' && stats) {
+      return t('home.testDesc', {
+        study: stats.todayStudyWords,
+        new: stats.todayNewWords,
+        due: stats.todayDueWords,
+      });
+    }
     if (countKey && stats) {
       return t(descKey, { count: stats[countKey] });
     }
     return t(descKey);
   };
+
+  const studyTotal = stats?.todayStudyWords ?? 0;
+  const studied = stats?.todayStudiedWords ?? 0;
+  const progressPct =
+    studyTotal > 0 ? Math.min(100, Math.round((studied / studyTotal) * 100)) : 0;
+  const hasStudy = studyTotal > 0;
 
   return (
     <div className="home fade-in">
@@ -75,10 +92,6 @@ export default function Home() {
           <div className="stat-value">{stats?.totalWords ?? 0}</div>
           <div className="stat-label">{t('home.totalWords')}</div>
         </div>
-        <div className="stat-item stat-item--success">
-          <div className="stat-value">{stats?.todayTests ?? 0}</div>
-          <div className="stat-label">{t('home.todayTests')}</div>
-        </div>
         <div className="stat-item stat-item--purple">
           <div className="stat-value">{stats?.todayAccuracy ?? 0}%</div>
           <div className="stat-label">{t('home.todayAccuracy')}</div>
@@ -87,6 +100,71 @@ export default function Home() {
           <div className="stat-value">{stats?.streakDays ?? 0}</div>
           <div className="stat-label">{t('home.streakDays')}</div>
         </div>
+      </section>
+
+      <section className="today-mission card">
+        <div className="today-mission__head">
+          <h2 className="today-mission__title">{t('home.todayMissionTitle')}</h2>
+          {hasStudy && (
+            <span className="today-mission__summary">
+              {t('home.missionProgress', { done: studied, total: studyTotal })}
+              {(stats?.todayTests ?? 0) > 0 && (
+                <>
+                  <span className="today-mission__sep">·</span>
+                  {t('home.missionAccuracy', { accuracy: stats?.todayAccuracy ?? 0 })}
+                </>
+              )}
+            </span>
+          )}
+        </div>
+
+        {hasStudy ? (
+          <>
+            <div className="today-mission__chips">
+              <div className="mission-chip mission-chip--new">
+                <span className="mission-chip__value">{stats?.todayNewWords ?? 0}</span>
+                <span className="mission-chip__label">{t('home.missionNew')}</span>
+              </div>
+              <div className="mission-chip mission-chip--due">
+                <span className="mission-chip__value">{stats?.todayDueWords ?? 0}</span>
+                <span className="mission-chip__label">{t('home.missionDue')}</span>
+              </div>
+              <div className="mission-chip mission-chip--urgent">
+                <span className="mission-chip__value">{stats?.weeklyReviewCount ?? 0}</span>
+                <span className="mission-chip__label">{t('home.missionUrgent')}</span>
+              </div>
+            </div>
+
+            <div className="today-mission__progress" aria-hidden="true">
+              <div
+                className="today-mission__progress-fill"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+
+            <div className="today-mission__actions">
+              <Link to="/test" className="btn btn-primary btn-lg today-mission__cta">
+                {t('home.startStudy')}
+              </Link>
+              <Link to="/test?mode=dictation" className="btn btn-secondary btn-lg today-mission__sub">
+                {t('home.startDictation')}
+              </Link>
+              {(stats?.weeklyReviewCount ?? 0) > 0 && (
+                <Link to="/review" className="btn btn-secondary btn-lg today-mission__sub">
+                  {t('home.reviewTitle')}
+                </Link>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="today-mission__empty">
+            <p>{t('home.missionEmpty')}</p>
+            <p className="today-mission__empty-hint">{t('home.missionEmptyHint')}</p>
+            <Link to="/import" className="btn btn-primary btn-lg today-mission__cta">
+              {t('home.goImport')}
+            </Link>
+          </div>
+        )}
       </section>
 
       <section className="action-grid">
@@ -101,7 +179,7 @@ export default function Home() {
             </div>
             <div>
               <h3>{t(action.titleKey)}</h3>
-              <p>{getDesc(action.descKey, 'countKey' in action ? action.countKey : undefined)}</p>
+              <p>{getDesc(action.descKey, 'countKey' in action ? action.countKey : undefined, action.to)}</p>
             </div>
           </Link>
         ))}

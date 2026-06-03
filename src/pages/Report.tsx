@@ -75,6 +75,7 @@ export default function Report() {
           <div className="mode-split">
             <span>{t('report.enToCn', { count: today.enToCnTests })}</span>
             <span>{t('report.cnToEn', { count: today.cnToEnTests })}</span>
+            <span>{t('report.dictation', { count: today.dictationTests ?? 0 })}</span>
           </div>
         </section>
       )}
