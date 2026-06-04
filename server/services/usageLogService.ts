@@ -129,8 +129,12 @@ export function getTokenUsageBudget(userId: number): TokenUsageBudget {
 export function checkTokenBudget(userId: number): void {
   const budget = getTokenUsageBudget(userId);
   if (!budget.dailyTokenLimit || !budget.limitReached) return;
+  const limitLabel =
+    budget.dailyTokenLimit >= 1000
+      ? `${budget.dailyTokenLimit % 1000 === 0 ? budget.dailyTokenLimit / 1000 : (budget.dailyTokenLimit / 1000).toFixed(1)}k`
+      : String(budget.dailyTokenLimit);
   throw new Error(
-    `今日 Token 用量已达上限（${budget.dailyTokenLimit.toLocaleString()}），请在「Token 消耗」调整限额或明日再试`
+    `今日 Token 用量已达上限（${limitLabel}），请在「Token 消耗」调整限额或明日再试`
   );
 }
 

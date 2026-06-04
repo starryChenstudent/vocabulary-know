@@ -4,8 +4,11 @@ import { api, type TokenUsageReport } from '../api/client';
 import { useLocale } from '../components/LocaleProvider';
 import {
   defaultUsageDateRange,
+  formatBudgetK,
   formatCompactTokens,
   formatTokenCount,
+  parseBudgetKInput,
+  tokensToBudgetKInput,
 } from '../utils/formatTokens';
 import './TokenUsage.css';
 
@@ -54,7 +57,9 @@ export default function TokenUsage() {
       const data = await api.getTokenUsage(from, to);
       setReport(data);
       setBudgetInput(
-        data.budget.dailyTokenLimit != null ? String(data.budget.dailyTokenLimit) : ''
+        data.budget.dailyTokenLimit != null
+          ? tokensToBudgetKInput(data.budget.dailyTokenLimit)
+          : ''
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : t('tokenUsage.loadFailed'));
@@ -67,6 +72,12 @@ export default function TokenUsage() {
     loadReport().finally(() => setLoading(false));
   }, [loadReport]);
 
+  useEffect(() => {
+    if (!budgetMessage) return;
+    const id = window.setTimeout(() => setBudgetMessage(''), 2000);
+    return () => window.clearTimeout(id);
+  }, [budgetMessage]);
+
   async function handleRefresh() {
     setRefreshing(true);
     await loadReport();
@@ -78,9 +89,8 @@ export default function TokenUsage() {
     setBudgetMessage('');
     setError('');
     try {
-      const trimmed = budgetInput.trim();
-      const limit = trimmed === '' ? null : Number(trimmed);
-      if (limit !== null && (!Number.isFinite(limit) || limit < 0)) {
+      const limit = parseBudgetKInput(budgetInput);
+      if (limit !== null && Number.isNaN(limit)) {
         setError(t('tokenUsage.budgetSaveFailed'));
         return;
       }
@@ -148,7 +158,11 @@ export default function TokenUsage() {
       </section>
 
       {error && <div className="error-msg">{error}</div>}
-      {budgetMessage && <div className="api-settings-success">{budgetMessage}</div>}
+      {budgetMessage && (
+        <div className="app-toast" role="status" aria-live="polite">
+          {budgetMessage}
+        </div>
+      )}
 
       {loading && !report ? (
         <div className="empty-state">{t('common.loading')}</div>
@@ -171,17 +185,68 @@ export default function TokenUsage() {
                 {report.budget.limitReached && (
                   <p className="token-usage-budget__warn">{t('tokenUsage.budgetLimitReached')}</p>
                 )}
-                <p className="token-usage-budget__today">
-                  {t('tokenUsage.budgetToday', {
-                    used: formatCompactTokens(report.budget.todayTotalTokens),
-                  })}
-                  {' · '}
-                  {report.budget.dailyTokenLimit != null
-                    ? t('tokenUsage.budgetLimit', {
-                        limit: formatTokenCount(report.budget.dailyTokenLimit),
-                      })
-                    : t('tokenUsage.budgetUnlimited')}
-                </p>
+                <div className="token-usage-budget__today-block">
+                  <p className="token-usage-budget__today-heading">
+                    {t('tokenUsage.budgetTodayHeading')}
+                  </p>
+                  <div className="token-usage-metrics">
+                    <div className="token-usage-metric">
+                      <span className="token-usage-metric__value">
+                        {formatCompactTokens(report.budget.todayPromptTokens)}
+                      </span>
+                      <span className="token-usage-metric__label">{t('tokenUsage.inputTokens')}</span>
+                    </div>
+                    <span className="token-usage-metrics__op" aria-hidden>
+                      +
+                    </span>
+                    <div className="token-usage-metric">
+                      <span className="token-usage-metric__value">
+                        {formatCompactTokens(report.budget.todayCompletionTokens)}
+                      </span>
+                      <span className="token-usage-metric__label">{t('tokenUsage.outputTokens')}</span>
+                    </div>
+                    <span className="token-usage-metrics__op" aria-hidden>
+                      =
+                    </span>
+                    <div className="token-usage-metric token-usage-metric--total">
+                      <span className="token-usage-metric__value">
+                        {formatCompactTokens(report.budget.todayTotalTokens)}
+                      </span>
+                      <span className="token-usage-metric__label">{t('tokenUsage.totalTokens')}</span>
+                    </div>
+                  </div>
+                  {report.budget.dailyTokenLimit != null && (
+                    <div
+                      className="token-usage-budget__progress"
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={report.budget.dailyTokenLimit}
+                      aria-valuenow={report.budget.todayTotalTokens}
+                      aria-label={t('tokenUsage.budgetTodayHeading')}
+                    >
+                      <div
+                        className={`token-usage-budget__progress-fill${
+                          report.budget.limitReached
+                            ? ' token-usage-budget__progress-fill--over'
+                            : ''
+                        }`}
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            (report.budget.todayTotalTokens / report.budget.dailyTokenLimit) * 100
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  )}
+                  <p className="token-usage-budget__limit-line">
+                    {report.budget.dailyTokenLimit != null
+                      ? t('tokenUsage.budgetLimitLine', {
+                          limit: formatBudgetK(report.budget.dailyTokenLimit),
+                        })
+                      : t('tokenUsage.budgetUnlimited')}
+                  </p>
+                </div>
                 <div className="token-usage-budget__form">
                   <label className="token-usage-budget__label">
                     {t('tokenUsage.budgetInputLabel')}
@@ -189,7 +254,7 @@ export default function TokenUsage() {
                       type="number"
                       className="input"
                       min={0}
-                      step={1000}
+                      step={1}
                       placeholder={t('tokenUsage.budgetPlaceholder')}
                       value={budgetInput}
                       onChange={(e) => setBudgetInput(e.target.value)}
@@ -206,18 +271,42 @@ export default function TokenUsage() {
                 </div>
               </section>
 
-              <div className="token-usage-summary">
-                <div className="stat-item">
-                  <div className="stat-value">{formatCompactTokens(report.summary.promptTokens)}</div>
-                  <div className="stat-label">{t('tokenUsage.inputTokens')}</div>
+              <section className="token-usage-range card">
+                <div className="token-usage-range__header">
+                  <h2 className="section-title">{t('tokenUsage.rangeSummaryHeading')}</h2>
+                  <p className="token-usage-range__hint">
+                    {t('tokenUsage.rangeSummaryHint', { from, to })}
+                  </p>
                 </div>
-                <div className="stat-item">
-                  <div className="stat-value">
-                    {formatCompactTokens(report.summary.completionTokens)}
+                <div className="token-usage-metrics token-usage-metrics--range">
+                  <div className="token-usage-metric">
+                    <span className="token-usage-metric__value">
+                      {formatCompactTokens(report.summary.promptTokens)}
+                    </span>
+                    <span className="token-usage-metric__label">{t('tokenUsage.inputTokens')}</span>
                   </div>
-                  <div className="stat-label">{t('tokenUsage.outputTokens')}</div>
+                  <span className="token-usage-metrics__op" aria-hidden>
+                    +
+                  </span>
+                  <div className="token-usage-metric">
+                    <span className="token-usage-metric__value">
+                      {formatCompactTokens(report.summary.completionTokens)}
+                    </span>
+                    <span className="token-usage-metric__label">{t('tokenUsage.outputTokens')}</span>
+                  </div>
+                  <span className="token-usage-metrics__op" aria-hidden>
+                    =
+                  </span>
+                  <div className="token-usage-metric token-usage-metric--total">
+                    <span className="token-usage-metric__value">
+                      {formatCompactTokens(
+                        report.summary.promptTokens + report.summary.completionTokens
+                      )}
+                    </span>
+                    <span className="token-usage-metric__label">{t('tokenUsage.totalTokens')}</span>
+                  </div>
                 </div>
-              </div>
+              </section>
 
               <section className="card token-usage-detail">
                 <h2 className="section-title">{t('tokenUsage.byModel')}</h2>

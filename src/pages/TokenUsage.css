@@ -55,9 +55,99 @@
   margin-bottom: 8px;
 }
 
-.token-usage-budget__today {
-  font-size: 0.92rem;
+.token-usage-budget__today-block {
+  margin-bottom: 14px;
+}
+
+.token-usage-budget__today-heading {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.token-usage-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.token-usage-metrics--range {
+  padding: 4px 0 2px;
+}
+
+.token-usage-metrics__op {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-faint);
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.token-usage-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 4.5rem;
+}
+
+.token-usage-metric__value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.token-usage-metric__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.token-usage-metric--total .token-usage-metric__value {
+  color: var(--accent);
+}
+
+.token-usage-budget__progress {
+  height: 6px;
+  margin: 12px 0 8px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+
+.token-usage-budget__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.token-usage-budget__progress-fill--over {
+  background: var(--error);
+}
+
+.token-usage-budget__limit-line {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.token-usage-range__header {
   margin-bottom: 12px;
+}
+
+.token-usage-range__header .section-title {
+  margin-bottom: 4px;
+}
+
+.token-usage-range__hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin: 0;
 }
 
 .token-usage-budget__form {
@@ -118,22 +208,6 @@
   padding-bottom: 12px;
   font-weight: 600;
   flex-shrink: 0;
-}
-
-.token-usage-summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--stat-gap);
-  width: 100%;
-}
-
-.token-usage-summary .stat-item {
-  padding: 24px 26px;
-}
-
-.token-usage-summary .stat-value {
-  font-size: clamp(1.75rem, 4vw, 2.25rem);
-  margin-bottom: 8px;
 }
 
 .token-usage-detail {
@@ -303,12 +377,8 @@
     padding-right: 4px;
   }
 
-  .token-usage-summary {
-    grid-template-columns: 1fr;
-  }
-
-  .token-usage-summary .stat-item {
-    padding: 16px 18px;
+  .token-usage-metric__value {
+    font-size: 1.15rem;
   }
 
   .token-usage-filters__dates label {

@@ -40,6 +40,12 @@ export default function Admin() {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!message) return;
+    const id = window.setTimeout(() => setMessage(''), 2000);
+    return () => window.clearTimeout(id);
+  }, [message]);
+
   if (!user?.is_admin) {
     return <Navigate to="/" replace />;
   }
@@ -126,7 +132,11 @@ export default function Admin() {
       </div>
 
       {error && <div className="error-msg">{error}</div>}
-      {message && <div className="admin-success">{message}</div>}
+      {message && (
+        <div className="app-toast" role="status" aria-live="polite">
+          {message}
+        </div>
+      )}
 
       <section className="card admin-registration-card">
         <div className="admin-registration-main">
