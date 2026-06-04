@@ -66,6 +66,8 @@ export interface ImportResult {
   imported: number;
   duplicates: number;
   parsed: ParsedWord[];
+  /** Words removed at parse/preview because they already exist in the user's vocabulary */
+  skippedInVocabulary?: number;
   previewDataUrl?: string;
   ocrUsage?: OcrUsageInfo;
 }

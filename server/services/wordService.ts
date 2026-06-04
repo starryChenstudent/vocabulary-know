@@ -10,6 +10,41 @@ export function getAllWords(userId: number): Word[] {
   return rows.map(mapWordRow);
 }
 
+function normalizeEnglishKey(english: string): string {
+  return english.trim().toLowerCase();
+}
+
+/** Drop words already in the user's vocabulary (and duplicates within the batch). */
+export function filterParsedAgainstVocabulary(
+  userId: number,
+  words: ParsedWord[]
+): { parsed: ParsedWord[]; skippedInVocabulary: number } {
+  const rows = db
+    .prepare('SELECT english FROM words WHERE user_id = ?')
+    .all(userId) as { english: string }[];
+  const inVocabulary = new Set(rows.map((r) => normalizeEnglishKey(r.english)));
+
+  const seenInBatch = new Set<string>();
+  const parsed: ParsedWord[] = [];
+  let skippedInVocabulary = 0;
+
+  for (const w of words) {
+    const key = normalizeEnglishKey(w.english);
+    if (!key) {
+      parsed.push(w);
+      continue;
+    }
+    if (inVocabulary.has(key) || seenInBatch.has(key)) {
+      skippedInVocabulary++;
+      continue;
+    }
+    seenInBatch.add(key);
+    parsed.push(w);
+  }
+
+  return { parsed, skippedInVocabulary };
+}
+
 export function getWordById(id: number, userId: number): Word | undefined {
   const row = db
     .prepare(`SELECT ${WORD_SELECT} FROM words WHERE id = ? AND user_id = ?`)
@@ -30,8 +65,16 @@ export function importWords(userId: number, parsed: ParsedWord[]): ImportResult 
   let duplicates = 0;
 
   const transaction = db.transaction((words: ParsedWord[]) => {
+    const seenInBatch = new Set<string>();
     for (const w of words) {
-      const existing = checkExists.get(userId, w.english);
+      const key = normalizeEnglishKey(w.english);
+      if (key && seenInBatch.has(key)) {
+        duplicates++;
+        continue;
+      }
+      if (key) seenInBatch.add(key);
+
+      const existing = checkExists.get(userId, w.english.trim());
       if (existing) {
         duplicates++;
         continue;

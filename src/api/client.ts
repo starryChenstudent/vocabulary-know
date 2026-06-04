@@ -193,6 +193,7 @@ export interface ImportResult {
   imported: number;
   duplicates: number;
   parsed: { english: string; chinese: string }[];
+  skippedInVocabulary?: number;
   previewDataUrl?: string;
   ocrUsage?: OcrUsageInfo;
   handwritingHint?: string;

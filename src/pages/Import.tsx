@@ -71,8 +71,7 @@ export default function Import() {
           return res.previewDataUrl!;
         });
       }
-      setResult(res);
-      setEditableWords(res.parsed.map((w) => ({ ...w })));
+      applyParseResult(res);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       if (err instanceof Error && err.message.toLowerCase().includes('abort')) return;
@@ -80,6 +79,16 @@ export default function Import() {
     } finally {
       setLoading(false);
       abortRef.current = null;
+    }
+  };
+
+  const applyParseResult = (res: ImportResult) => {
+    setResult(res);
+    setEditableWords(res.parsed.map((w) => ({ ...w })));
+    if (res.parsed.length === 0 && (res.skippedInVocabulary ?? 0) > 0) {
+      setError(t('import.allInVocabulary'));
+    } else if (res.parsed.length > 0) {
+      setError('');
     }
   };
 
@@ -95,8 +104,7 @@ export default function Import() {
 
     try {
       const res = await api.importText(text);
-      setResult(res);
-      setEditableWords(res.parsed.map((w) => ({ ...w })));
+      applyParseResult(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('import.ocrFailed'));
     } finally {
@@ -198,8 +206,7 @@ export default function Import() {
           return res.previewDataUrl!;
         });
       }
-      setResult(res);
-      setEditableWords(res.parsed.map((w) => ({ ...w })));
+      applyParseResult(res);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
       if (err instanceof Error && err.message.toLowerCase().includes('abort')) return;
@@ -374,6 +381,11 @@ export default function Import() {
               <span className="badge badge-purple">
                 {t('import.parsed', { count: editableWords.length })}
               </span>
+              {(result.skippedInVocabulary ?? 0) > 0 && (
+                <span className="badge badge-muted">
+                  {t('import.skippedInVocabulary', { count: result.skippedInVocabulary })}
+                </span>
+              )}
               <span className="badge badge-muted">{t('import.reviewHint')}</span>
             </div>
           ) : (

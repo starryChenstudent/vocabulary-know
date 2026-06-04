@@ -5,6 +5,7 @@ import { ocrAndParseImage, parseTextImport, createImagePreview } from '../servic
 import {
   getAllWords,
   importWords,
+  filterParsedAgainstVocabulary,
   deleteWord,
   deleteWords,
   deleteAllWords,
@@ -115,7 +116,12 @@ router.post('/import/text', (req, res) => {
     return;
   }
   const parsed = parseTextImport(text);
-  res.json(parsed);
+  const filtered = filterParsedAgainstVocabulary(req.userId, parsed.parsed);
+  res.json({
+    ...parsed,
+    parsed: filtered.parsed,
+    skippedInVocabulary: filtered.skippedInVocabulary,
+  });
 });
 
 router.post('/import/preview', upload.single('image'), async (req, res) => {
@@ -149,7 +155,12 @@ router.post('/import/image', upload.single('image'), async (req, res) => {
       req.file.mimetype,
       req.file.originalname
     );
-    res.json(ocrResult);
+    const filtered = filterParsedAgainstVocabulary(req.userId, ocrResult.parsed);
+    res.json({
+      ...ocrResult,
+      parsed: filtered.parsed,
+      skippedInVocabulary: filtered.skippedInVocabulary,
+    });
   } catch (err) {
     console.error('OCR error:', err);
     const message =
