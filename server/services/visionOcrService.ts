@@ -9,6 +9,7 @@ import {
   type AiProviderPreset,
   type VisionRuntimeProvider,
 } from './aiConfigService.js';
+import { completeChat } from './aiGateway.js';
 
 export type VisionProvider = VisionRuntimeProvider;
 
@@ -131,18 +132,6 @@ function buildVisionUserMessage(
   return { role: 'user', content };
 }
 
-function parseApiErrorMessage(raw: string): string {
-  try {
-    const parsed = JSON.parse(raw) as {
-      error?: { message?: string; code?: string };
-      message?: string;
-    };
-    return parsed.error?.message ?? parsed.message ?? raw;
-  } catch {
-    return raw;
-  }
-}
-
 export { isVisionOcrAvailable };
 
 export function getVisionProvider(userId: number): VisionProvider | null {
@@ -156,7 +145,7 @@ async function callVisionModel(
   model: string,
   prompt: string,
   provider: VisionProvider
-): Promise<{ content: string; totalTokens: number }> {
+): Promise<{ content: string; promptTokens: number; completionTokens: number; totalTokens: number }> {
   if (!buffer.length) {
     throw new Error('图片为空，无法识别');
   }
@@ -168,44 +157,31 @@ async function callVisionModel(
     throw new Error('未配置视觉 API Key，请在「模型服务」页面填写你的 API Key');
   }
 
-  const url = `${config.baseUrl.replace(/\/$/, '')}/chat/completions`;
   const userMessage = buildVisionUserMessage(provider, model, mediaType, base64, prompt);
+  const preset = getActiveProviderPreset(userId);
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  try {
+    const result = await completeChat({
+      userId,
+      feature: 'ocr',
+      preset,
+      provider: config.runtimeProvider === 'dashscope' ? 'dashscope' : 'openai_compatible',
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl,
       model,
-      temperature: 0,
       messages: [userMessage],
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    const detail = parseApiErrorMessage(err);
-    throw new Error(`Vision OCR 失败: ${detail.slice(0, 300)}`);
-  }
-
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-    usage?: {
-      total_tokens?: number;
-      prompt_tokens?: number;
-      completion_tokens?: number;
+      temperature: 0,
+    });
+    return {
+      content: result.content,
+      promptTokens: result.promptTokens,
+      completionTokens: result.completionTokens,
+      totalTokens: result.totalTokens,
     };
-  };
-  const usage = data.usage;
-  const totalTokens =
-    usage?.total_tokens ??
-    (usage?.prompt_tokens ?? 0) + (usage?.completion_tokens ?? 0);
-  return {
-    content: data.choices?.[0]?.message?.content?.trim() ?? '',
-    totalTokens,
-  };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Vision OCR 失败: ${message}`);
+  }
 }
 
 export async function ocrWithVision(

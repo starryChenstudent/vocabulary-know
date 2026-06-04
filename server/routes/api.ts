@@ -35,6 +35,12 @@ import {
   testAiConnection,
   getProviderModels,
 } from '../services/aiConfigService.js';
+import { isVisionOcrAvailable } from '../services/aiConfigService.js';
+import {
+  getTokenUsageBudget,
+  getTokenUsageReport,
+  setUserDailyTokenLimit,
+} from '../services/usageLogService.js';
 import type { TestMode } from '../types.js';
 
 const router = Router();
@@ -160,6 +166,42 @@ router.post('/import/confirm', (req, res) => {
   }
   const result = importWords(req.userId, words);
   res.json(result);
+});
+
+router.get('/usage/tokens', (req, res) => {
+  try {
+    const from = String(req.query.from ?? '');
+    const to = String(req.query.to ?? '');
+    res.json({
+      ...getTokenUsageReport(req.userId, from, to),
+      apiKeyConfigured: isVisionOcrAvailable(req.userId),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '查询失败';
+    res.status(400).json({ error: message });
+  }
+});
+
+router.put('/usage/budget', (req, res) => {
+  try {
+    const raw = req.body?.dailyTokenLimit;
+    const dailyTokenLimit =
+      raw === null || raw === undefined || raw === ''
+        ? null
+        : Number(raw);
+    if (
+      dailyTokenLimit !== null &&
+      (!Number.isFinite(dailyTokenLimit) || dailyTokenLimit < 0)
+    ) {
+      res.status(400).json({ error: '每日 Token 上限须为非负整数，留空表示不限制' });
+      return;
+    }
+    setUserDailyTokenLimit(req.userId, dailyTokenLimit);
+    res.json({ budget: getTokenUsageBudget(req.userId) });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '保存失败';
+    res.status(400).json({ error: message });
+  }
 });
 
 router.get('/ai-settings', (req, res) => {

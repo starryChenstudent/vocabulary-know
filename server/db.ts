@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { encryptSecret, isEncryptionEnabled } from './services/secretCrypto.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -137,6 +138,52 @@ function migrateWordsSrs(db: Database.Database): void {
   );
 }
 
+function migrateEncryptStoredApiKeys(db: Database.Database): void {
+  if (!isEncryptionEnabled()) return;
+
+  const rows = db
+    .prepare(
+      `SELECT user_id, preset, api_key FROM user_ai_provider_configs WHERE trim(api_key) != ''`
+    )
+    .all() as Array<{ user_id: number; preset: string; api_key: string }>;
+
+  const update = db.prepare(
+    `UPDATE user_ai_provider_configs SET api_key = ? WHERE user_id = ? AND preset = ?`
+  );
+
+  for (const row of rows) {
+    const key = row.api_key.trim();
+    if (!key || key.startsWith('enc:v1:')) continue;
+    update.run(encryptSecret(key), row.user_id, row.preset);
+  }
+}
+
+function migrateUserAiDailyTokenLimit(db: Database.Database): void {
+  if (!columnExists(db, 'user_ai_settings', 'daily_token_limit')) {
+    db.exec('ALTER TABLE user_ai_settings ADD COLUMN daily_token_limit INTEGER');
+  }
+}
+
+function migrateAiUsageLogs(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS ai_usage_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT NOT NULL,
+      feature TEXT NOT NULL CHECK(feature IN ('ocr', 'translate')),
+      prompt_tokens INTEGER NOT NULL DEFAULT 0,
+      completion_tokens INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_user_date
+      ON ai_usage_logs(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_user_provider_model
+      ON ai_usage_logs(user_id, provider, model);
+  `);
+}
+
 function migrateAiProviderConfigs(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_ai_provider_configs (
@@ -268,6 +315,9 @@ db.exec(`
   ensureWordsCreatedAtDefault(db);
   migrateUsersAdmin(db);
   migrateAiProviderConfigs(db);
+  migrateAiUsageLogs(db);
+  migrateUserAiDailyTokenLimit(db);
+  migrateEncryptStoredApiKeys(db);
   migrateTestRecordsDictationMode(db);
   migrateWordsSrs(db);
 

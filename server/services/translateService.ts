@@ -1,7 +1,12 @@
 import db from '../db.js';
 import type { Word } from '../types.js';
 import type { TestMode } from '../types.js';
-import { isVisionOcrAvailable, resolveLlmConfig } from './aiConfigService.js';
+import {
+  getActiveProviderPreset,
+  isVisionOcrAvailable,
+  resolveLlmConfig,
+} from './aiConfigService.js';
+import { completeChat } from './aiGateway.js';
 
 export type TranslateDirection = TestMode;
 
@@ -66,29 +71,24 @@ async function translateWithLlm(
       ? `将以下英文翻译为简洁的中文释义（词典风格，只输出中文，不要解释）：\n${text}`
       : `将以下中文翻译为对应的英文单词或短语（只输出英文，不要解释）：\n${text}`;
 
-  const url = `${config.baseUrl.replace(/\/$/, '')}/chat/completions`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const preset = getActiveProviderPreset(userId);
+  try {
+    const result = await completeChat({
+      userId,
+      feature: 'translate',
+      preset,
+      provider: config.runtimeProvider === 'dashscope' ? 'dashscope' : 'openai_compatible',
+      apiKey: config.apiKey,
+      baseUrl: config.baseUrl,
       model: config.textModel,
-      temperature: 0,
       messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`翻译失败: ${err.slice(0, 200)}`);
+      temperature: 0,
+    });
+    return result.content;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`翻译失败: ${message.slice(0, 200)}`);
   }
-
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  return data.choices?.[0]?.message?.content?.trim() ?? '';
 }
 
 function pickBestVocabularyMatch(

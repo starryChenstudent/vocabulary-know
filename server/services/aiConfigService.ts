@@ -1,4 +1,6 @@
 import db from '../db.js';
+import { completeChat } from './aiGateway.js';
+import { decryptSecret, encryptSecret } from './secretCrypto.js';
 import {
   defaultTextModel,
   defaultVisionModel,
@@ -179,7 +181,7 @@ function rowToProviderConfig(row: ProviderConfigRow): StoredProviderConfig {
   return {
     preset,
     provider: row.provider === 'openai_compatible' ? 'openai_compatible' : 'dashscope',
-    apiKey: row.api_key ?? '',
+    apiKey: decryptSecret(row.api_key ?? ''),
     baseUrl: row.base_url || base.baseUrl,
     visionModel: row.vision_model || base.visionModel,
     textModel: row.text_model || base.textModel,
@@ -219,7 +221,7 @@ function savePreferences(userId: number, prefs: UserAiPreferences): void {
     userId,
     active?.provider ?? PRESET_PROVIDER[prefs.preset],
     prefs.preset,
-    active?.apiKey ?? '',
+    encryptSecret(active?.apiKey ?? ''),
     active?.baseUrl ?? defaultProviderConfig(prefs.preset).baseUrl,
     active?.visionModel ?? defaultProviderConfig(prefs.preset).visionModel,
     prefs.textModel,
@@ -272,7 +274,7 @@ function saveProviderConfig(userId: number, config: StoredProviderConfig): void 
     userId,
     config.preset,
     config.provider,
-    config.apiKey,
+    encryptSecret(config.apiKey),
     config.baseUrl,
     config.visionModel,
     config.textModel,
@@ -521,27 +523,26 @@ export async function testAiConnection(
     (input.visionModel ?? stored.visionModel ?? DEFAULTS[provider].visionModel).trim() ||
     DEFAULTS[provider].visionModel;
 
-  const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${effectiveKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  try {
+    await completeChat({
+      userId,
+      feature: 'connection_test',
+      preset,
+      provider,
+      apiKey: effectiveKey,
+      baseUrl,
       model: visionModel,
+      messages: buildConnectionTestMessages(visionModel, provider),
       temperature: 0,
       max_tokens: 8,
-      messages: buildConnectionTestMessages(visionModel, provider),
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    return { ok: false, message: err.slice(0, 240) || `HTTP ${response.status}` };
+      skipBudgetCheck: true,
+      skipUsageLog: true,
+    });
+    return { ok: true, message: '连接成功' };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, message: message.slice(0, 240) };
   }
-
-  return { ok: true, message: '连接成功' };
 }
 
 export interface ProviderModelsInput {

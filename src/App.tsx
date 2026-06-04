@@ -13,6 +13,8 @@ import WordList from './pages/WordList';
 import Login from './pages/Login';
 import Admin from './pages/Admin';
 import ApiSettings from './pages/ApiSettings';
+import TokenUsage from './pages/TokenUsage';
+import Translate from './pages/Translate';
 
 function ProtectedApp() {
   const { user, loading } = useAuth();
@@ -45,7 +47,9 @@ function ProtectedApp() {
         <Route path="/error-book" element={<ErrorBook />} />
         <Route path="/review" element={<WeeklyReview />} />
         <Route path="/words" element={<WordList />} />
+        <Route path="/translate" element={<Translate />} />
         <Route path="/settings/api" element={<ApiSettings />} />
+        <Route path="/tokens" element={<TokenUsage />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

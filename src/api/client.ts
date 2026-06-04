@@ -57,6 +57,32 @@ export interface AiSettings {
   configuredProviders: ConfiguredProviderSummary[];
 }
 
+export interface TokenUsageByModelRow {
+  provider: string;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  callCount: number;
+}
+
+export interface TokenUsageBudget {
+  dailyTokenLimit: number | null;
+  todayPromptTokens: number;
+  todayCompletionTokens: number;
+  todayTotalTokens: number;
+  limitReached: boolean;
+}
+
+export interface TokenUsageReport {
+  apiKeyConfigured: boolean;
+  budget: TokenUsageBudget;
+  summary: {
+    promptTokens: number;
+    completionTokens: number;
+  };
+  byModel: TokenUsageByModelRow[];
+}
+
 export interface AiSettingsUpdate {
   provider?: AiProvider;
   preset?: AiProviderPreset;
@@ -362,6 +388,17 @@ export const api = {
     }),
   deleteUser: (userId: number) =>
     request<{ success: boolean }>(`/admin/users/${userId}`, { method: 'DELETE' }),
+  getTokenUsage: (from: string, to: string) =>
+    request<TokenUsageReport>(
+      `/usage/tokens?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+    ),
+
+  setTokenBudget: (dailyTokenLimit: number | null) =>
+    request<{ budget: TokenUsageBudget }>('/usage/budget', {
+      method: 'PUT',
+      body: JSON.stringify({ dailyTokenLimit }),
+    }),
+
   getAiSettings: () => request<AiSettings>('/ai-settings'),
   updateAiSettings: (body: AiSettingsUpdate) =>
     request<AiSettings>('/ai-settings', { method: 'PUT', body: JSON.stringify(body) }),
