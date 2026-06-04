@@ -52,6 +52,16 @@ async function convertHeicWithHeifConvert(buffer: Buffer): Promise<Buffer> {
   }
 }
 
+async function convertHeicWithDecode(buffer: Buffer): Promise<Buffer> {
+  const heicDecode = await import('heic-decode');
+  const decoder = heicDecode.default ?? heicDecode;
+  const { width, height, data } = await decoder({ buffer: new Uint8Array(buffer) });
+  const sharpFn = await loadSharp();
+  return sharpFn(data, { raw: { width, height, channels: 4 } })
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
 async function decodeInputBuffer(
   buffer: Buffer,
   mimeType?: string,
@@ -68,8 +78,12 @@ async function decodeInputBuffer(
   try {
     return await convertHeicWithHeifConvert(buffer);
   } catch {
-    const sharpFn = await loadSharp();
-    return sharpFn(buffer).jpeg().toBuffer();
+    try {
+      return await convertHeicWithDecode(buffer);
+    } catch {
+      const sharpFn = await loadSharp();
+      return sharpFn(buffer).jpeg().toBuffer();
+    }
   }
 }
 
