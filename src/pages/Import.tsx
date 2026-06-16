@@ -3,6 +3,7 @@ import { api, type ImportResult } from '../api/client';
 import { useLocale } from '../components/LocaleProvider';
 import { isHeicFile, loadImagePreview, revokePreviewUrl } from '../utils/imagePreview';
 import { compressImage, needsCompression } from '../utils/imageCompression';
+import { translateProviderPreset } from '../utils/providerPresetLabel';
 import './Import.css';
 
 type Tab = 'image' | 'text';
@@ -236,7 +237,7 @@ export default function Import() {
     const platform =
       usage.preset === 'tesseract'
         ? t('adminAi.providers.tesseract')
-        : t(`adminAi.providers.${usage.preset}`);
+        : translateProviderPreset(usage.preset, t);
     const tokens =
       usage.totalTokens > 0
         ? t('import.engineTokens', { count: usage.totalTokens.toLocaleString() })

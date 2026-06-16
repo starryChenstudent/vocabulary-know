@@ -118,19 +118,6 @@ function ocrOptionsFor(
   return list;
 }
 
-function formatModelOptionLabel(
-  entry: ProviderModelEntry,
-  t: (key: string) => string
-): string {
-  const capKey =
-    entry.capability === 'ocr'
-      ? 'adminAi.modelCapabilityOcr'
-      : entry.capability === 'multimodal'
-        ? 'adminAi.modelCapabilityMultimodal'
-        : 'adminAi.modelCapabilityText';
-  return `${entry.id} · ${t(capKey)}`;
-}
-
 type ModalTarget = AiProviderPreset | 'local';
 
 interface ModalForm {
@@ -437,7 +424,7 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
         >
           {modalOcrModels.map((m) => (
             <option key={m.id} value={m.id}>
-              {formatModelOptionLabel(m, t)}
+              {m.id}
             </option>
           ))}
         </select>
@@ -466,7 +453,7 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
         >
           {modalOcrModels.map((m) => (
             <option key={m.id} value={m.id}>
-              {formatModelOptionLabel(m, t)}
+              {m.id}
             </option>
           ))}
         </select>

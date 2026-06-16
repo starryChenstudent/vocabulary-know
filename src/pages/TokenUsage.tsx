@@ -10,6 +10,7 @@ import {
   parseBudgetKInput,
   tokensToBudgetKInput,
 } from '../utils/formatTokens';
+import { translateProviderPreset } from '../utils/providerPresetLabel';
 import './TokenUsage.css';
 
 function useMobileTable() {
@@ -107,11 +108,7 @@ export default function TokenUsage() {
   const formatCellCount = (value: number) =>
     mobileTable ? formatCompactTokens(value) : formatTokenCount(value);
 
-  const providerLabel = (preset: string) => {
-    const key = `adminAi.providers.${preset}` as const;
-    const translated = t(key);
-    return translated === key ? preset : translated;
-  };
+  const providerLabel = (preset: string) => translateProviderPreset(preset, t);
 
   return (
     <div className="token-usage-page fade-in">
