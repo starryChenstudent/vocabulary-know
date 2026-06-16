@@ -246,6 +246,7 @@ router.post('/ai-settings/models', async (req, res) => {
       preset !== 'deepseek' &&
       preset !== 'openai' &&
       preset !== 'moonshot' &&
+      preset !== 'aliyun_token_plan' &&
       preset !== 'custom'
     ) {
       res.status(400).json({ error: '无效的提供商' });

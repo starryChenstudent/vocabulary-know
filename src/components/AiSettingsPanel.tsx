@@ -18,7 +18,7 @@ interface ProviderCatalogItem {
   icon: string;
   iconClass: string;
   defaultBaseUrl: string;
-  baseUrlOptions?: { labelKey: string; value: string }[];
+  tokenPlanOptions?: { labelKey: string; value: string }[];
   defaultModels: { vision: string; structure: string };
 }
 
@@ -30,10 +30,26 @@ const PROVIDER_CATALOG: ProviderCatalogItem[] = [
     icon: 'Q',
     iconClass: 'ai-card-icon--dashscope',
     defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    baseUrlOptions: [
-      { labelKey: 'adminAi.regions.dashscopeCn', value: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-      { labelKey: 'adminAi.regions.dashscopeIntl', value: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1' },
-      { labelKey: 'adminAi.regions.dashscopeUs', value: 'https://dashscope-us.aliyuncs.com/compatible-mode/v1' },
+    tokenPlanOptions: [
+      { labelKey: 'adminAi.tokenPlans.payAsYouGo', value: 'pay-as-you-go' },
+      { labelKey: 'adminAi.tokenPlans.qwenVlPlus', value: 'qwen-vl-plus' },
+      { labelKey: 'adminAi.tokenPlans.qwenVlMax', value: 'qwen-vl-max' },
+      { labelKey: 'adminAi.tokenPlans.custom', value: 'custom' },
+    ],
+    defaultModels: { vision: 'qwen-vl-ocr', structure: 'qwen-vl-ocr' },
+  },
+  {
+    preset: 'aliyun_token_plan',
+    backendProvider: 'dashscope',
+    nameKey: 'adminAi.providers.aliyunTokenPlan',
+    icon: 'A',
+    iconClass: 'ai-card-icon--aliyun-token-plan',
+    defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    tokenPlanOptions: [
+      { labelKey: 'adminAi.tokenPlans.payAsYouGo', value: 'pay-as-you-go' },
+      { labelKey: 'adminAi.tokenPlans.qwenVlPlus', value: 'qwen-vl-plus' },
+      { labelKey: 'adminAi.tokenPlans.qwenVlMax', value: 'qwen-vl-max' },
+      { labelKey: 'adminAi.tokenPlans.custom', value: 'custom' },
     ],
     defaultModels: { vision: 'qwen-vl-ocr', structure: 'qwen-vl-ocr' },
   },
@@ -97,7 +113,7 @@ interface ModalForm {
   backendProvider: AiProvider;
   apiKey: string;
   baseUrl: string;
-  baseUrlPreset: string;
+  tokenPlanId: string;
   customBaseUrl: boolean;
   visionModel: string;
   structureModel: string;
@@ -113,7 +129,7 @@ function buildForm(saved: AiSettings, preset: AiProviderPreset): ModalForm {
   const configured = saved.configuredProviders.find((p) => p.preset === preset);
   const isActive = saved.preset === preset;
   const baseUrl = configured?.baseUrl ?? (isActive ? saved.baseUrl : item.defaultBaseUrl);
-  const optionMatch = item.baseUrlOptions?.find((o) => o.value === baseUrl);
+  const planOption = item.tokenPlanOptions?.find((o) => o.value === baseUrl);
 
   return {
     target: preset,
@@ -121,8 +137,8 @@ function buildForm(saved: AiSettings, preset: AiProviderPreset): ModalForm {
     backendProvider: item.backendProvider,
     apiKey: '',
     baseUrl,
-    baseUrlPreset: optionMatch?.value ?? (item.baseUrlOptions?.[0]?.value ?? baseUrl),
-    customBaseUrl: Boolean(baseUrl && !optionMatch && item.baseUrlOptions),
+    tokenPlanId: planOption?.value ?? (item.tokenPlanOptions?.[0]?.value ?? 'pay-as-you-go'),
+    customBaseUrl: Boolean(baseUrl && !planOption && item.tokenPlanOptions),
     visionModel: configured?.visionModel ?? item.defaultModels.vision,
     structureModel: configured?.structureModel ?? item.defaultModels.structure,
     ocrEngine: isActive ? saved.ocrEngine : 'auto',
@@ -136,7 +152,7 @@ function buildLocalForm(saved: AiSettings): ModalForm {
     backendProvider: catalogItem(saved.preset).backendProvider,
     apiKey: '',
     baseUrl: saved.baseUrl,
-    baseUrlPreset: '',
+    tokenPlanId: 'pay-as-you-go',
     customBaseUrl: false,
     visionModel: saved.visionModel,
     structureModel: saved.structureModel,
@@ -149,7 +165,11 @@ function resolveBaseUrl(form: ModalForm): string {
   if (form.customBaseUrl || form.preset === 'custom') {
     return form.baseUrl.trim();
   }
-  return form.baseUrlPreset || item.defaultBaseUrl;
+  if (form.tokenPlanId) {
+    const matched = item.tokenPlanOptions?.find((o) => o.value === form.tokenPlanId);
+    if (matched) return matched.value;
+  }
+  return item.defaultBaseUrl;
 }
 
 interface AiSettingsPanelProps {
@@ -235,7 +255,7 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
     return () => {
       cancelled = true;
     };
-  }, [modalForm?.target, modalForm?.preset, modalForm?.baseUrl, modalForm?.baseUrlPreset, modalForm?.customBaseUrl, modalForm?.apiKey]);
+  }, [modalForm?.target, modalForm?.preset, modalForm?.baseUrl, modalForm?.tokenPlanId, modalForm?.customBaseUrl, modalForm?.apiKey]);
 
   function openModal(target: ModalTarget, expandAdvanced = false) {
     if (!saved) return;
@@ -752,28 +772,25 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
                         <span className="ai-field__label">
                           {t('adminAi.baseUrl')} <em>*</em>
                         </span>
-                        {modalItem.baseUrlOptions && modalForm.preset !== 'custom' ? (
+                        {modalItem.tokenPlanOptions && modalItem.tokenPlanOptions.length > 0 ? (
                           <>
                             <select
                               className="input ai-modal__input"
-                              value={modalForm.customBaseUrl ? '__custom__' : modalForm.baseUrlPreset}
+                              value={modalForm.tokenPlanId || '__custom__'}
                               onChange={(e) => {
                                 if (e.target.value === '__custom__') {
-                                  setField('customBaseUrl', true);
-                                  setField('baseUrl', modalForm.baseUrl || modalItem.defaultBaseUrl);
+                                  setField('tokenPlanId', '__custom__');
                                 } else {
-                                  setField('customBaseUrl', false);
-                                  setField('baseUrlPreset', e.target.value);
-                                  setField('baseUrl', e.target.value);
+                                  setField('tokenPlanId', e.target.value);
                                 }
                               }}
                             >
-                              {modalItem.baseUrlOptions.map((opt) => (
+                              <option value="__custom__">{t('adminAi.customEndpoint')}</option>
+                              {modalItem.tokenPlanOptions.map((opt) => (
                                 <option key={opt.value} value={opt.value}>
                                   {t(opt.labelKey)}
                                 </option>
                               ))}
-                              <option value="__custom__">{t('adminAi.customEndpoint')}</option>
                             </select>
                             {modalForm.customBaseUrl && (
                               <input

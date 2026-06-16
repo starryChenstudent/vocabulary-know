@@ -180,6 +180,7 @@
 .ai-card-icon--moonshot { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
 .ai-card-icon--custom { background: linear-gradient(135deg, #64748b, #475569); }
 .ai-card-icon--tesseract { background: linear-gradient(135deg, #059669, #047857); }
+.ai-card-icon--aliyun-token-plan { background: linear-gradient(135deg, #ff6a00, #ee0979); }
 
 .ai-provider-card__title-row {
   display: flex;

@@ -73,7 +73,7 @@ export interface ImportResult {
 }
 
 export interface OcrUsageInfo {
-  preset: 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'custom' | 'tesseract';
+  preset: 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'aliyun_token_plan' | 'custom' | 'tesseract';
   model: string;
   totalTokens: number;
 }

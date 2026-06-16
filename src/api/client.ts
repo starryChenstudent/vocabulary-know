@@ -27,7 +27,7 @@ export interface AdminUserRow {
 }
 
 export type AiProvider = 'dashscope' | 'openai_compatible';
-export type AiProviderPreset = 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'custom';
+export type AiProviderPreset = 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'aliyun_token_plan' | 'custom';
 export type OcrEngineMode = 'auto' | 'vision' | 'tesseract' | 'dashscope' | 'openai';
 export type AiConfigSource = 'user' | 'none';
 

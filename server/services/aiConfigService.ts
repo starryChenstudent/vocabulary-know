@@ -13,7 +13,7 @@ import {
 export type { ProviderModelsResult } from './aiModelCatalog.js';
 
 export type AiProvider = 'dashscope' | 'openai_compatible';
-export type AiProviderPreset = 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'custom';
+export type AiProviderPreset = 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'aliyun_token_plan' | 'custom';
 export type VisionRuntimeProvider = 'dashscope' | 'openai';
 export type OcrEngineMode = 'auto' | 'vision' | 'tesseract' | 'dashscope' | 'openai';
 export type ConfigSource = 'user' | 'none';
@@ -107,6 +107,7 @@ const PRESET_PROVIDER: Record<AiProviderPreset, AiProvider> = {
   deepseek: 'openai_compatible',
   openai: 'openai_compatible',
   moonshot: 'openai_compatible',
+  aliyun_token_plan: 'dashscope',
   custom: 'openai_compatible',
 };
 
@@ -116,6 +117,7 @@ function inferPreset(stored: Partial<StoredProviderConfig & UserAiPreferences>):
     stored.preset === 'deepseek' ||
     stored.preset === 'openai' ||
     stored.preset === 'moonshot' ||
+    stored.preset === 'aliyun_token_plan' ||
     stored.preset === 'custom'
   ) {
     return stored.preset;
@@ -410,6 +412,7 @@ export function updateAiSettings(userId: number, update: AiSettingsUpdate): AiSe
     update.preset === 'deepseek' ||
     update.preset === 'openai' ||
     update.preset === 'moonshot' ||
+    update.preset === 'aliyun_token_plan' ||
     update.preset === 'custom'
       ? update.preset
       : preferences.preset;
@@ -501,6 +504,7 @@ export async function testAiConnection(
     input.preset === 'deepseek' ||
     input.preset === 'openai' ||
     input.preset === 'moonshot' ||
+    input.preset === 'aliyun_token_plan' ||
     input.preset === 'custom'
       ? input.preset
       : preferences.preset;

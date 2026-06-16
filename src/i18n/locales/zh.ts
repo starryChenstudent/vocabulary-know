@@ -440,7 +440,14 @@ export const zh = {
       deepseek: 'DeepSeek',
       openai: 'OpenAI',
       moonshot: 'Moonshot',
+      aliyunTokenPlan: '阿里云 Token Plan',
       custom: 'OpenAI 兼容',
+    },
+    plans: {
+      payAsYouGo: '按量付费',
+      qwenVlPlus: 'qwen-vl-plus 资源包',
+      qwenVlMax: 'qwen-vl-max 资源包',
+      custom: '自定义资源包',
     },
     regions: {
       dashscopeCn: '中国（北京）',

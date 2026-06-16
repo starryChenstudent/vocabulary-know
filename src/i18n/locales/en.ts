@@ -444,7 +444,14 @@ export const en: MessageTree = {
       deepseek: 'DeepSeek',
       openai: 'OpenAI',
       moonshot: 'Moonshot',
+      aliyunTokenPlan: 'Aliyun Token Plan',
       custom: 'OpenAI compatible',
+    },
+    plans: {
+      payAsYouGo: 'Pay-As-You-Go',
+      qwenVlPlus: 'qwen-vl-plus resource package',
+      qwenVlMax: 'qwen-vl-max resource package',
+      custom: 'Custom resource package',
     },
     regions: {
       dashscopeCn: 'China (Beijing)',

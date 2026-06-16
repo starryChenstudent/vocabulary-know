@@ -1,4 +1,4 @@
-export type AiProviderPreset = 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'custom';
+export type AiProviderPreset = 'dashscope' | 'deepseek' | 'openai' | 'moonshot' | 'aliyun_token_plan' | 'custom';
 export type ModelCapability = 'ocr' | 'multimodal' | 'text';
 export type ModelSource = 'builtin' | 'api';
 
@@ -26,6 +26,26 @@ const BUILTIN: Record<
   { vision: BuiltinModel[]; text: BuiltinModel[]; visionSupported: boolean }
 > = {
   dashscope: {
+    visionSupported: true,
+    vision: [
+      { id: 'qwen-vl-ocr', capability: 'ocr' },
+      { id: 'qwen-vl-ocr-latest', capability: 'ocr' },
+      { id: 'qwen-vl-ocr-2025-11-20', capability: 'ocr' },
+      { id: 'qwen3-vl-flash', capability: 'multimodal' },
+      { id: 'qwen3-vl-plus', capability: 'multimodal' },
+      { id: 'qwen-vl-max', capability: 'multimodal' },
+      { id: 'qwen-vl-plus', capability: 'multimodal' },
+      { id: 'qwen2.5-vl-72b-instruct', capability: 'multimodal' },
+      { id: 'qwen2.5-vl-7b-instruct', capability: 'multimodal' },
+    ],
+    text: [
+      { id: 'qwen-turbo', capability: 'text' },
+      { id: 'qwen-plus', capability: 'text' },
+      { id: 'qwen-max', capability: 'text' },
+      { id: 'qwen3.6-flash', capability: 'text' },
+    ],
+  },
+  aliyun_token_plan: {
     visionSupported: true,
     vision: [
       { id: 'qwen-vl-ocr', capability: 'ocr' },
