@@ -449,6 +449,11 @@ export const zh = {
       qwenVlMax: 'qwen-vl-max 资源包',
       custom: '自定义资源包',
     },
+    tokenPlans: {
+      openAiCompatible: 'OpenAI 兼容协议',
+      anthropicCompatible: 'Anthropic 兼容协议',
+      anthropicHint: 'OCR 与翻译当前仅支持 OpenAI 兼容协议端点',
+    },
     regions: {
       dashscopeCn: '中国（北京）',
       dashscopeIntl: '国际（新加坡）',
@@ -486,9 +491,16 @@ export const zh = {
       dashscope: '百炼',
       openai: 'OpenAI 兼容',
     },
-    ocrAuto: '自动（有 Key 用 AI，否则 Tesseract）',
+    ocrAuto: '自动（检测平台识图模型，有则用 AI，否则 Tesseract）',
     ocrVision: '仅 AI 识图',
     ocrTesseract: '仅本地 Tesseract',
+    ocrAutoHintCallable:
+      '已检测到 {count} 个可识图模型；自动模式将使用 {model} 进行 AI 识图',
+    ocrAutoHintFallback:
+      '未填 API Key、当前平台不支持识图，或所选模型不可识图；自动模式将回退 Tesseract',
+    ocrVisionHint: '始终使用 {model} 进行 AI 识图（失败时不回退 Tesseract）',
+    ocrVisionUnavailable: '请先配置 API Key 并选择支持识图的模型',
+    ocrTesseractHint: '始终使用本地 Tesseract，不调用云端 AI',
   },
   result: {
     correct: '正确',

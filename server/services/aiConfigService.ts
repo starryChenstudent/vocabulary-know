@@ -102,6 +102,10 @@ const DEFAULTS: Record<
   },
 };
 
+const PRESET_BASE_URL: Partial<Record<AiProviderPreset, string>> = {
+  aliyun_token_plan: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1',
+};
+
 const PRESET_PROVIDER: Record<AiProviderPreset, AiProvider> = {
   dashscope: 'dashscope',
   deepseek: 'openai_compatible',
@@ -123,6 +127,7 @@ function inferPreset(stored: Partial<StoredProviderConfig & UserAiPreferences>):
     return stored.preset;
   }
   const url = (stored.baseUrl ?? '').toLowerCase();
+  if (url.includes('token-plan')) return 'aliyun_token_plan';
   if (stored.provider === 'dashscope' || url.includes('dashscope')) return 'dashscope';
   if (url.includes('deepseek')) return 'deepseek';
   if (url.includes('moonshot')) return 'moonshot';
@@ -138,7 +143,7 @@ function defaultProviderConfig(preset: AiProviderPreset): StoredProviderConfig {
     preset,
     provider,
     apiKey: '',
-    baseUrl: DEFAULTS[provider].baseUrl,
+    baseUrl: PRESET_BASE_URL[preset] ?? DEFAULTS[provider].baseUrl,
     visionModel,
     textModel,
     structureModel: visionModel || DEFAULTS[provider].structureModel,
@@ -360,7 +365,10 @@ export function isVisionOcrAvailable(userId: number): boolean {
   const preset = resolveActivePreset(preferences, configured);
   const config = configured.find((c) => c.preset === preset);
   if (!config?.apiKey.trim()) return false;
-  return presetSupportsVisionOcr(preset);
+  if (!presetSupportsVisionOcr(preset)) return false;
+  const visionModel = (config.visionModel || defaultVisionModel(preset)).trim();
+  if (!visionModel || !modelRequiresVisionInput(visionModel)) return false;
+  return true;
 }
 
 export function getVisionRuntimeProvider(userId: number): VisionRuntimeProvider | null {
@@ -569,9 +577,9 @@ export async function getProviderModels(
   });
 }
 
-/** 64×64 PNG — meets DashScope min dimension (>10) and min_pixels (3072). */
+/** 256×256 PNG (65536 px) — meets Token Plan / DashScope min_pixels. */
 const TEST_PING_IMAGE =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAe0lEQVR4nNXOQREAAAyDMPyrRcJE9LEjCoJxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxGIdxfAdWB9BRAqRA9DWJAAAAAElFTkSuQmCC';
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAAACXBIWXMAAAPoAAAD6AG1e1JrAAACu0lEQVR4nO3TMQEAAAiAMPunNYIxPNgS8DALYfMdAJ8MQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYA0A5BmANIMQJoBSDMAaQYgzQCkGYAtO8/NKjGyxwLSAAAAAElFTkSuQmCC';
 
 function buildConnectionTestMessages(model: string, provider: AiProvider) {
   const prompt = 'Reply with exactly: OK';
@@ -586,7 +594,7 @@ function buildConnectionTestMessages(model: string, provider: AiProvider) {
   };
 
   if (provider === 'dashscope') {
-    imagePart.min_pixels = 3072;
+    imagePart.min_pixels = 65536;
     imagePart.max_pixels = 8388608;
   }
 

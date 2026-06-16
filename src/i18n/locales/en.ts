@@ -453,6 +453,11 @@ export const en: MessageTree = {
       qwenVlMax: 'qwen-vl-max resource package',
       custom: 'Custom resource package',
     },
+    tokenPlans: {
+      openAiCompatible: 'OpenAI compatible API',
+      anthropicCompatible: 'Anthropic compatible API',
+      anthropicHint: 'OCR and translation currently require the OpenAI-compatible endpoint',
+    },
     regions: {
       dashscopeCn: 'China (Beijing)',
       dashscopeIntl: 'International (Singapore)',
@@ -491,9 +496,16 @@ export const en: MessageTree = {
       dashscope: 'DashScope',
       openai: 'OpenAI compatible',
     },
-    ocrAuto: 'Auto (AI if key set, else Tesseract)',
+    ocrAuto: 'Auto (use AI when platform has vision models, else Tesseract)',
     ocrVision: 'AI vision only',
     ocrTesseract: 'Tesseract only',
+    ocrAutoHintCallable:
+      'Found {count} vision-capable model(s); auto mode will use {model} for AI OCR',
+    ocrAutoHintFallback:
+      'No API key, no vision support, or selected model cannot read images; auto falls back to Tesseract',
+    ocrVisionHint: 'Always use {model} for AI OCR (no Tesseract fallback on failure)',
+    ocrVisionUnavailable: 'Configure an API key and select a vision-capable model first',
+    ocrTesseractHint: 'Always use local Tesseract; never call cloud AI',
   },
   result: {
     correct: 'Correct',

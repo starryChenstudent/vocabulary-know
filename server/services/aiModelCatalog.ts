@@ -48,21 +48,20 @@ const BUILTIN: Record<
   aliyun_token_plan: {
     visionSupported: true,
     vision: [
-      { id: 'qwen-vl-ocr', capability: 'ocr' },
-      { id: 'qwen-vl-ocr-latest', capability: 'ocr' },
-      { id: 'qwen-vl-ocr-2025-11-20', capability: 'ocr' },
-      { id: 'qwen3-vl-flash', capability: 'multimodal' },
-      { id: 'qwen3-vl-plus', capability: 'multimodal' },
-      { id: 'qwen-vl-max', capability: 'multimodal' },
-      { id: 'qwen-vl-plus', capability: 'multimodal' },
-      { id: 'qwen2.5-vl-72b-instruct', capability: 'multimodal' },
-      { id: 'qwen2.5-vl-7b-instruct', capability: 'multimodal' },
+      { id: 'qwen3.7-plus', capability: 'multimodal' },
+      { id: 'qwen3.6-plus', capability: 'multimodal' },
+      { id: 'qwen3.6-flash', capability: 'multimodal' },
+      { id: 'kimi-k2.6', capability: 'multimodal' },
+      { id: 'kimi-k2.5', capability: 'multimodal' },
     ],
     text: [
-      { id: 'qwen-turbo', capability: 'text' },
-      { id: 'qwen-plus', capability: 'text' },
-      { id: 'qwen-max', capability: 'text' },
-      { id: 'qwen3.6-flash', capability: 'text' },
+      { id: 'qwen3.7-max', capability: 'text' },
+      { id: 'deepseek-v4-pro', capability: 'text' },
+      { id: 'deepseek-v4-flash', capability: 'text' },
+      { id: 'deepseek-v3.2', capability: 'text' },
+      { id: 'glm-5.1', capability: 'text' },
+      { id: 'glm-5', capability: 'text' },
+      { id: 'MiniMax-M2.5', capability: 'text' },
     ],
   },
   openai: {
@@ -119,6 +118,8 @@ const VISION_ID_PATTERNS = [
   /qwen-vl-ocr/i,
   /qwen[\d.]*-vl/i,
   /qwen-vl/i,
+  /qwen3\.\d+-plus/i,
+  /qwen3\.\d+-flash/i,
   /gpt-4o/i,
   /gpt-4\.1/i,
   /gpt-4-turbo/i,
@@ -133,6 +134,11 @@ const OCR_ID_PATTERNS = [/ocr/i, /qwen-vl-ocr/i];
 
 const TEXT_ONLY_BLOCKLIST = [
   /^deepseek-/i,
+  /^qwen3\.\d+-max$/i,
+  /^qwen-image/i,
+  /^wan\d/i,
+  /^glm-/i,
+  /^minimax-/i,
   /^text-embedding/i,
   /^tts-/i,
   /^whisper/i,
@@ -145,13 +151,16 @@ export function presetSupportsVisionOcr(preset: AiProviderPreset): boolean {
 
 /** Models that require image input in chat/completions (OCR / VL). */
 export function modelRequiresVisionInput(model: string): boolean {
-  return /qwen-vl-ocr|qwen[\d.]*-vl|qwen-vl|gpt-4o|gpt-4\.1|gpt-4-turbo|gpt-4-vision|moonshot-v1-\d+k-vision|kimi-k2/i.test(
+  return /qwen-vl-ocr|qwen[\d.]*-vl|qwen-vl|qwen3\.\d+-(?:plus|flash)|gpt-4o|gpt-4\.1|gpt-4-turbo|gpt-4-vision|moonshot-v1-\d+k-vision|kimi-k2/i.test(
     model.trim()
   );
 }
 
 export function defaultVisionModel(preset: AiProviderPreset): string {
   const vision = BUILTIN[preset]?.vision ?? [];
+  if (preset === 'aliyun_token_plan') {
+    return vision[0]?.id ?? '';
+  }
   const ocr = vision.find((m) => m.capability === 'ocr');
   if (ocr) return ocr.id;
   return vision[0]?.id ?? '';

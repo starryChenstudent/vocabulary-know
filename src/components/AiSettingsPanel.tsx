@@ -11,6 +11,19 @@ import {
 import { useLocale } from './LocaleProvider';
 import './AiSettingsPanel.css';
 
+const TOKEN_PLAN_OPENAI_URL =
+  'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';
+const TOKEN_PLAN_ANTHROPIC_URL =
+  'https://token-plan.cn-beijing.maas.aliyuncs.com/apps/anthropic';
+
+/** Legacy mistaken plan ids stored as base_url before protocol endpoints were wired. */
+const LEGACY_TOKEN_PLAN_BASE_URLS = new Set([
+  'pay-as-you-go',
+  'qwen-vl-plus',
+  'qwen-vl-max',
+  'custom',
+]);
+
 interface ProviderCatalogItem {
   preset: AiProviderPreset;
   backendProvider: AiProvider;
@@ -30,12 +43,6 @@ const PROVIDER_CATALOG: ProviderCatalogItem[] = [
     icon: 'Q',
     iconClass: 'ai-card-icon--dashscope',
     defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    tokenPlanOptions: [
-      { labelKey: 'adminAi.tokenPlans.payAsYouGo', value: 'pay-as-you-go' },
-      { labelKey: 'adminAi.tokenPlans.qwenVlPlus', value: 'qwen-vl-plus' },
-      { labelKey: 'adminAi.tokenPlans.qwenVlMax', value: 'qwen-vl-max' },
-      { labelKey: 'adminAi.tokenPlans.custom', value: 'custom' },
-    ],
     defaultModels: { vision: 'qwen-vl-ocr', structure: 'qwen-vl-ocr' },
   },
   {
@@ -44,14 +51,18 @@ const PROVIDER_CATALOG: ProviderCatalogItem[] = [
     nameKey: 'adminAi.providers.aliyunTokenPlan',
     icon: 'A',
     iconClass: 'ai-card-icon--aliyun-token-plan',
-    defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    defaultBaseUrl: TOKEN_PLAN_OPENAI_URL,
     tokenPlanOptions: [
-      { labelKey: 'adminAi.tokenPlans.payAsYouGo', value: 'pay-as-you-go' },
-      { labelKey: 'adminAi.tokenPlans.qwenVlPlus', value: 'qwen-vl-plus' },
-      { labelKey: 'adminAi.tokenPlans.qwenVlMax', value: 'qwen-vl-max' },
-      { labelKey: 'adminAi.tokenPlans.custom', value: 'custom' },
+      {
+        labelKey: 'adminAi.tokenPlans.openAiCompatible',
+        value: TOKEN_PLAN_OPENAI_URL,
+      },
+      {
+        labelKey: 'adminAi.tokenPlans.anthropicCompatible',
+        value: TOKEN_PLAN_ANTHROPIC_URL,
+      },
     ],
-    defaultModels: { vision: 'qwen-vl-ocr', structure: 'qwen-vl-ocr' },
+    defaultModels: { vision: 'qwen3.7-plus', structure: 'qwen3.7-plus' },
   },
   {
     preset: 'deepseek',
@@ -98,11 +109,26 @@ function ocrOptionsFor(
   models: ProviderModelEntry[] | undefined,
   current?: string
 ): ProviderModelEntry[] {
-  const list = (models ?? []).filter((m) => m.capability === 'ocr');
+  const list = (models ?? []).filter(
+    (m) => m.capability === 'ocr' || m.capability === 'multimodal'
+  );
   if (current && !list.some((m) => m.id === current)) {
-    return [{ id: current, capability: 'ocr', source: 'builtin' }, ...list];
+    return [{ id: current, capability: 'multimodal', source: 'builtin' }, ...list];
   }
   return list;
+}
+
+function formatModelOptionLabel(
+  entry: ProviderModelEntry,
+  t: (key: string) => string
+): string {
+  const capKey =
+    entry.capability === 'ocr'
+      ? 'adminAi.modelCapabilityOcr'
+      : entry.capability === 'multimodal'
+        ? 'adminAi.modelCapabilityMultimodal'
+        : 'adminAi.modelCapabilityText';
+  return `${entry.id} · ${t(capKey)}`;
 }
 
 type ModalTarget = AiProviderPreset | 'local';
@@ -124,12 +150,22 @@ function catalogItem(preset: AiProviderPreset): ProviderCatalogItem {
   return PROVIDER_CATALOG.find((p) => p.preset === preset) ?? PROVIDER_CATALOG[0];
 }
 
+function normalizeStoredBaseUrl(baseUrl: string, item: ProviderCatalogItem): string {
+  const trimmed = baseUrl.trim();
+  if (!trimmed || LEGACY_TOKEN_PLAN_BASE_URLS.has(trimmed)) {
+    return item.defaultBaseUrl;
+  }
+  return trimmed;
+}
+
 function buildForm(saved: AiSettings, preset: AiProviderPreset): ModalForm {
   const item = catalogItem(preset);
   const configured = saved.configuredProviders.find((p) => p.preset === preset);
   const isActive = saved.preset === preset;
-  const baseUrl = configured?.baseUrl ?? (isActive ? saved.baseUrl : item.defaultBaseUrl);
+  const rawBaseUrl = configured?.baseUrl ?? (isActive ? saved.baseUrl : item.defaultBaseUrl);
+  const baseUrl = normalizeStoredBaseUrl(rawBaseUrl, item);
   const planOption = item.tokenPlanOptions?.find((o) => o.value === baseUrl);
+  const customBaseUrl = Boolean(item.tokenPlanOptions && baseUrl && !planOption);
 
   return {
     target: preset,
@@ -137,8 +173,10 @@ function buildForm(saved: AiSettings, preset: AiProviderPreset): ModalForm {
     backendProvider: item.backendProvider,
     apiKey: '',
     baseUrl,
-    tokenPlanId: planOption?.value ?? (item.tokenPlanOptions?.[0]?.value ?? 'pay-as-you-go'),
-    customBaseUrl: Boolean(baseUrl && !planOption && item.tokenPlanOptions),
+    tokenPlanId: customBaseUrl
+      ? '__custom__'
+      : (planOption?.value ?? item.tokenPlanOptions?.[0]?.value ?? ''),
+    customBaseUrl,
     visionModel: configured?.visionModel ?? item.defaultModels.vision,
     structureModel: configured?.structureModel ?? item.defaultModels.structure,
     ocrEngine: isActive ? saved.ocrEngine : 'auto',
@@ -152,7 +190,7 @@ function buildLocalForm(saved: AiSettings): ModalForm {
     backendProvider: catalogItem(saved.preset).backendProvider,
     apiKey: '',
     baseUrl: saved.baseUrl,
-    tokenPlanId: 'pay-as-you-go',
+    tokenPlanId: '',
     customBaseUrl: false,
     visionModel: saved.visionModel,
     structureModel: saved.structureModel,
@@ -162,7 +200,7 @@ function buildLocalForm(saved: AiSettings): ModalForm {
 
 function resolveBaseUrl(form: ModalForm): string {
   const item = catalogItem(form.preset);
-  if (form.customBaseUrl || form.preset === 'custom') {
+  if (form.preset === 'custom' || form.customBaseUrl || form.tokenPlanId === '__custom__') {
     return form.baseUrl.trim();
   }
   if (form.tokenPlanId) {
@@ -367,6 +405,21 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
     [providerModels?.visionModels, modalForm?.visionModel]
   );
 
+  const modalHasApiKey = useMemo(() => {
+    if (!modalForm || modalForm.target === 'local' || !saved) return false;
+    if (modalForm.apiKey.trim()) return true;
+    return saved.configuredProviders.some((p) => p.preset === modalForm.preset);
+  }, [modalForm, saved]);
+
+  const modalVisionCallable = useMemo(() => {
+    if (!modalForm || modalForm.target === 'local') return false;
+    if (!modalHasApiKey) return false;
+    if (providerModels && !providerModels.visionSupported) return false;
+    if (modalOcrModels.length === 0) return false;
+    const visionModel = modalForm.visionModel.trim();
+    return modalOcrModels.some((m) => m.id === visionModel);
+  }, [modalForm, modalHasApiKey, providerModels, modalOcrModels]);
+
   function renderVisionModelField(tabIndex: number) {
     if (!modalForm) return null;
     if (providerModels && !providerModels.visionSupported) {
@@ -384,7 +437,7 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
         >
           {modalOcrModels.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.id}
+              {formatModelOptionLabel(m, t)}
             </option>
           ))}
         </select>
@@ -413,7 +466,7 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
         >
           {modalOcrModels.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.id}
+              {formatModelOptionLabel(m, t)}
             </option>
           ))}
         </select>
@@ -462,13 +515,15 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
     onError?.('');
     onMessage?.('');
     try {
+      const ocrEngine =
+        modalForm.ocrEngine === 'vision' && !modalVisionCallable ? 'auto' : modalForm.ocrEngine;
       const updated = await api.updateAiSettings({
         provider: modalForm.backendProvider,
         preset: modalForm.preset,
         baseUrl,
         visionModel: modalForm.visionModel,
         structureModel: modalForm.structureModel,
-        ocrEngine: modalForm.ocrEngine,
+        ocrEngine,
         ...(modalForm.apiKey.trim() ? { apiKey: modalForm.apiKey.trim() } : {}),
       });
       setSaved(updated);
@@ -776,13 +831,31 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
                           <>
                             <select
                               className="input ai-modal__input"
-                              value={modalForm.tokenPlanId || '__custom__'}
+                              value={modalForm.customBaseUrl ? '__custom__' : modalForm.tokenPlanId}
                               onChange={(e) => {
                                 if (e.target.value === '__custom__') {
-                                  setField('tokenPlanId', '__custom__');
+                                  setModalForm((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          tokenPlanId: '__custom__',
+                                          customBaseUrl: true,
+                                        }
+                                      : prev
+                                  );
                                 } else {
-                                  setField('tokenPlanId', e.target.value);
+                                  setModalForm((prev) =>
+                                    prev
+                                      ? {
+                                          ...prev,
+                                          tokenPlanId: e.target.value,
+                                          customBaseUrl: false,
+                                          baseUrl: e.target.value,
+                                        }
+                                      : prev
+                                  );
                                 }
+                                setTestResult(null);
                               }}
                             >
                               <option value="__custom__">{t('adminAi.customEndpoint')}</option>
@@ -792,6 +865,11 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
                                 </option>
                               ))}
                             </select>
+                            {modalForm.tokenPlanId === TOKEN_PLAN_ANTHROPIC_URL && (
+                              <p className="ai-field__hint ai-field__hint--warn">
+                                {t('adminAi.tokenPlans.anthropicHint')}
+                              </p>
+                            )}
                             {modalForm.customBaseUrl && (
                               <input
                                 className="input ai-modal__input"
@@ -888,9 +966,25 @@ export default function AiSettingsPanel({ onMessage, onError }: AiSettingsPanelP
                                 tabIndex={advancedOpen ? 0 : -1}
                               >
                                 <option value="auto">{t('adminAi.ocrAuto')}</option>
-                                <option value="vision">{t('adminAi.ocrVision')}</option>
+                                <option value="vision" disabled={!modalVisionCallable}>
+                                  {t('adminAi.ocrVision')}
+                                </option>
                                 <option value="tesseract">{t('adminAi.ocrTesseract')}</option>
                               </select>
+                              <span className="ai-field__hint">
+                                {modalForm.ocrEngine === 'auto'
+                                  ? modalVisionCallable
+                                    ? t('adminAi.ocrAutoHintCallable', {
+                                        count: modalOcrModels.length,
+                                        model: modalForm.visionModel,
+                                      })
+                                    : t('adminAi.ocrAutoHintFallback')
+                                  : modalForm.ocrEngine === 'vision' && !modalVisionCallable
+                                    ? t('adminAi.ocrVisionUnavailable')
+                                    : modalForm.ocrEngine === 'vision'
+                                      ? t('adminAi.ocrVisionHint', { model: modalForm.visionModel })
+                                      : t('adminAi.ocrTesseractHint')}
+                              </span>
                             </label>
                           </div>
                         </div>

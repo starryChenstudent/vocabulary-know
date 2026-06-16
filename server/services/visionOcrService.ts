@@ -120,7 +120,7 @@ function buildVisionUserMessage(
   };
 
   if (provider === 'dashscope') {
-    imagePart.min_pixels = 3072;
+    imagePart.min_pixels = 65536;
     imagePart.max_pixels = 8388608;
   }
 
